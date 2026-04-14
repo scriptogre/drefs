@@ -77,7 +77,8 @@ impl LspState {
             .and_then(|uri| uri_to_path(uri))
             .unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
 
-        let config = DoxrConfig::load(&project_root)?;
+        let mut config = DoxrConfig::load(&project_root)?;
+        config.style = config.effective_style(&project_root);
         let src_dirs = config.effective_src(&project_root);
 
         let mut state = Self {

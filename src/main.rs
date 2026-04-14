@@ -75,6 +75,9 @@ fn main() -> Result<()> {
         config.inventories = cli.inventories;
     }
 
+    // Resolve auto-detected style.
+    config.style = config.effective_style(&project_root);
+
     // 1. Discover Python files.
     let src_dirs = config.effective_src(&project_root);
     let discovered = discover::discover_modules(&src_dirs, &config.exclude);

@@ -75,12 +75,16 @@ impl DoxrConfig {
             .unwrap_or_default())
     }
 
-    /// Return effective source directories (defaults to `["."]` if empty).
+    /// Return effective source directories, auto-detecting if not configured.
+    ///
+    /// Detection order:
+    /// 1. Explicit `src` config → use as-is
+    /// 2. `src/` directory exists with Python packages inside → `["src"]`
+    /// 3. Any top-level directory containing `__init__.py` → `["."]`
+    /// 4. Fallback → `["."]`
     pub fn effective_src(&self, project_root: &Path) -> Vec<PathBuf> {
-        if self.src.is_empty() {
-            vec![project_root.to_path_buf()]
-        } else {
-            self.src
+        if !self.src.is_empty() {
+            return self.src
                 .iter()
                 .map(|s| {
                     if s.is_absolute() {
@@ -89,7 +93,53 @@ impl DoxrConfig {
                         project_root.join(s)
                     }
                 })
-                .collect()
+                .collect();
         }
+
+        // Auto-detect: check for src layout first.
+        let src_dir = project_root.join("src");
+        if src_dir.is_dir() && has_python_packages(&src_dir) {
+            return vec![src_dir];
+        }
+
+        // Flat layout: project root itself.
+        vec![project_root.to_path_buf()]
     }
+
+    /// Auto-detect documentation style if set to Auto.
+    ///
+    /// - `mkdocs.yml` or `mkdocs.yaml` exists → MkDocs
+    /// - `conf.py` exists (Sphinx) → Sphinx
+    /// - Otherwise → Auto (check both)
+    pub fn effective_style(&self, project_root: &Path) -> DocStyle {
+        if self.style != DocStyle::Auto {
+            return self.style.clone();
+        }
+
+        if project_root.join("mkdocs.yml").exists()
+            || project_root.join("mkdocs.yaml").exists()
+        {
+            return DocStyle::Mkdocs;
+        }
+
+        // Check for Sphinx conf.py in common locations.
+        if project_root.join("conf.py").exists()
+            || project_root.join("docs/conf.py").exists()
+            || project_root.join("doc/conf.py").exists()
+        {
+            return DocStyle::Sphinx;
+        }
+
+        DocStyle::Auto
+    }
+}
+
+/// Check if a directory contains at least one Python package (dir with __init__.py).
+fn has_python_packages(dir: &Path) -> bool {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return false;
+    };
+    entries.filter_map(|e| e.ok()).any(|entry| {
+        entry.path().is_dir() && entry.path().join("__init__.py").exists()
+    })
 }
