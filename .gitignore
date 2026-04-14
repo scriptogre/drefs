@@ -1,3 +1,6 @@
 /target
 __pycache__/
 *.pyc
+editors/pycharm/build/
+editors/pycharm/.gradle/
+editors/pycharm/.intellijPlatform/
