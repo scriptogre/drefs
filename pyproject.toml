@@ -1,0 +1,33 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "doxr"
+version = "0.1.0"
+description = "A hyper-fast Python docstring cross-reference checker"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.9"
+keywords = ["documentation", "docstring", "cross-reference", "linter", "mkdocs", "sphinx"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Topic :: Documentation",
+    "Topic :: Software Development :: Quality Assurance",
+]
+
+[project.urls]
+Repository = "https://github.com/OWNER/doxr"
+
+[tool.maturin]
+bindings = "bin"
+strip = true
+
+[tool.doxr]
+# doxr eats its own dogfood
+src = ["tests/fixtures"]

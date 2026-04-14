@@ -1,0 +1,19 @@
+[package]
+name = "doxr"
+version = "0.1.0"
+edition = "2024"
+description = "A hyper-fast Python docstring cross-reference checker"
+license = "MIT"
+
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+tree-sitter = "0.25"
+tree-sitter-python = "0.25"
+regex = "1"
+toml = "0.8"
+serde = { version = "1", features = ["derive"] }
+ignore = "0.4"
+rayon = "1"
+anyhow = "1"
+flate2 = "1"
+ureq = "3"
