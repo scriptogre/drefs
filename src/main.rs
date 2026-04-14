@@ -4,10 +4,11 @@ mod discover;
 mod extract;
 mod graph;
 mod inventory;
+mod lsp;
 mod parse;
 
 use anyhow::Result;
-use clap::Parser as ClapParser;
+use clap::{Parser as ClapParser, Subcommand};
 use rayon::prelude::*;
 use std::path::PathBuf;
 use std::process;
@@ -15,6 +16,9 @@ use std::process;
 #[derive(ClapParser)]
 #[command(name = "doxr", version, about = "A hyper-fast Python docstring cross-reference checker")]
 struct Cli {
+    #[command(subcommand)]
+    command: Option<Command>,
+
     /// Project root directory to check (default: current directory).
     #[arg(default_value = ".")]
     path: PathBuf,
@@ -36,8 +40,18 @@ struct Cli {
     inventories: Vec<String>,
 }
 
+#[derive(Subcommand)]
+enum Command {
+    /// Start the LSP server (stdio transport).
+    Lsp,
+}
+
 fn main() -> Result<()> {
     let cli = Cli::parse();
+
+    if let Some(Command::Lsp) = cli.command {
+        return lsp::run();
+    }
 
     let project_root = cli.path.canonicalize().unwrap_or(cli.path.clone());
 

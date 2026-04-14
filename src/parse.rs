@@ -1,10 +1,20 @@
 /// Parse a Python file using tree-sitter and extract definitions, imports,
 /// docstrings, and `__all__`.
-use crate::graph::{Docstring, Import, Module, Symbol, SymbolKind};
+use crate::graph::{Docstring, Import, Module, SourceLocation, Symbol, SymbolKind};
 use anyhow::{Context, Result};
 use std::collections::HashMap;
 use std::path::Path;
 use tree_sitter::{Node, Parser};
+
+/// Create a SourceLocation from a tree-sitter node.
+fn node_location(node: Node, file_path: &str) -> SourceLocation {
+    let pos = node.start_position();
+    SourceLocation {
+        file: file_path.to_string(),
+        line: pos.row + 1,
+        col: pos.column + 1,
+    }
+}
 
 /// Parse a single `.py` file and return a [`Module`].
 pub fn parse_file(file_path: &Path, dotted_path: &str) -> Result<Module> {
@@ -28,8 +38,10 @@ pub fn parse_file(file_path: &Path, dotted_path: &str) -> Result<Module> {
     let root = tree.root_node();
     let src = source.as_bytes();
 
+    let file_path_str = file_path.display().to_string();
     let mut module = Module {
         path: dotted_path.to_string(),
+        file_path: file_path_str,
         is_package,
         definitions: HashMap::new(),
         imports: Vec::new(),
@@ -142,6 +154,7 @@ fn extract_class(node: Node, src: &[u8], module: &mut Module) -> Option<Symbol> 
         kind: SymbolKind::Class,
         members,
         bases,
+        location: Some(node_location(name, &module.file_path)),
     })
 }
 
@@ -198,6 +211,7 @@ fn extract_function(node: Node, src: &[u8], module: &mut Module) -> Option<Symbo
         kind: SymbolKind::Function,
         members: HashMap::new(),
         bases: vec![],
+        location: Some(node_location(name, &module.file_path)),
     })
 }
 
@@ -215,6 +229,7 @@ fn extract_attribute(node: Node, src: &[u8], defs: &mut HashMap<String, Symbol>)
                         kind: SymbolKind::Attribute,
                         members: HashMap::new(),
                         bases: vec![],
+                        location: None,
                     },
                 );
             }
@@ -230,6 +245,7 @@ fn extract_attribute(node: Node, src: &[u8], defs: &mut HashMap<String, Symbol>)
                             kind: SymbolKind::Attribute,
                             members: HashMap::new(),
                             bases: vec![],
+                            location: None,
                         },
                     );
                 }
@@ -268,6 +284,7 @@ fn walk_for_self_attrs(node: Node, src: &[u8], members: &mut HashMap<String, Sym
                                                 kind: SymbolKind::Attribute,
                                                 members: HashMap::new(),
                                                 bases: vec![],
+                                                location: None,
                                             });
                                         }
                                     }

@@ -21,6 +21,14 @@ pub enum SymbolKind {
     Attribute,
 }
 
+/// Source location of a symbol definition.
+#[derive(Debug, Clone)]
+pub struct SourceLocation {
+    pub file: String,
+    pub line: usize, // 1-indexed
+    pub col: usize,  // 1-indexed
+}
+
 /// A single Python symbol (class, function, variable, …).
 #[derive(Debug, Clone)]
 pub struct Symbol {
@@ -30,6 +38,8 @@ pub struct Symbol {
     pub members: HashMap<String, Symbol>,
     /// Base class names (for classes only), as written in the source.
     pub bases: Vec<String>,
+    /// Where this symbol is defined.
+    pub location: Option<SourceLocation>,
 }
 
 /// A recorded `import` / `from … import …` statement.
@@ -56,6 +66,8 @@ pub struct Docstring {
 pub struct Module {
     /// Dotted module path (e.g. `my_pkg.foo.bar`).
     pub path: DottedPath,
+    /// File path on disk.
+    pub file_path: String,
     /// Whether this module is a package (`__init__.py`).
     pub is_package: bool,
     /// Top-level definitions in this module.
