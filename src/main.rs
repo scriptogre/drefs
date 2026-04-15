@@ -2,6 +2,7 @@ mod config;
 mod diagnostic;
 mod discover;
 mod extract;
+mod fast_scan;
 mod graph;
 mod inventory;
 mod lsp;
@@ -87,16 +88,28 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
-    // 2. Parse files in parallel and build the symbol graph.
+    // 2. Read all files in parallel, then parse.
+    //    Files without docstrings (no `"""`) use fast line-based scanning
+    //    instead of tree-sitter, which is ~10x cheaper per file.
     let parsed: Vec<_> = discovered
         .par_iter()
         .filter_map(|dm| {
-            match parse::parse_file(&dm.file_path, &dm.dotted_path) {
-                Ok(module) => Some((dm.file_path.display().to_string(), module)),
-                Err(e) => {
-                    eprintln!("Warning: {}: {e}", dm.file_path.display());
-                    None
+            let content = std::fs::read(&dm.file_path).ok()?;
+            let file_str = dm.file_path.display().to_string();
+
+            if fast_scan::has_docstrings(&content) {
+                // Full tree-sitter parse: extracts class members, bases,
+                // docstrings, self.x attributes, etc.
+                match parse::parse_bytes(&content, &dm.file_path, &dm.dotted_path) {
+                    Ok(module) => Some((file_str, module)),
+                    Err(e) => {
+                        eprintln!("Warning: {}: {e}", dm.file_path.display());
+                        None
+                    }
                 }
+            } else {
+                // Fast scan: line-based import/definition extraction only.
+                Some((file_str, fast_scan::fast_scan(&content, &dm.file_path, &dm.dotted_path)))
             }
         })
         .collect();

@@ -19,10 +19,10 @@ Validating cross-references in [tinygrad/tinygrad](https://github.com/tinygrad/t
 
 | Command | Mean | Min | Max |
 |:---|---:|---:|---:|
-| `doxr .` | 464 ms | 448 ms | 488 ms |
-| `mkdocs build --strict` | 48.5 s | 47.2 s | 50.2 s |
+| `doxr .` | 110 ms | 98 ms | 125 ms |
+| `mkdocs build --strict` | 51.0 s | 48.3 s | 52.5 s |
 
-**~104x faster.**
+**~460x faster.**
 
 ### httpx (60 Python files, 13k stars)
 
@@ -30,8 +30,8 @@ Validating cross-references in [encode/httpx](https://github.com/encode/httpx):
 
 | Command | Mean | Min | Max |
 |:---|---:|---:|---:|
-| `doxr .` | 19 ms | 17 ms | 31 ms |
-| `mkdocs build --strict` | 876 ms | 854 ms | 962 ms |
+| `doxr .` | 19 ms | 16 ms | 50 ms |
+| `mkdocs build --strict` | 872 ms | 845 ms | 921 ms |
 
 **~45x faster.**
 

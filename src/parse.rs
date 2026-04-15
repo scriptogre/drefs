@@ -2,9 +2,18 @@
 /// docstrings, and `__all__`.
 use crate::graph::{Docstring, Import, Module, SourceLocation, Symbol, SymbolKind};
 use anyhow::{Context, Result};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::Path;
 use tree_sitter::{Node, Parser};
+
+thread_local! {
+    static PARSER: RefCell<Parser> = RefCell::new({
+        let mut parser = Parser::new();
+        parser.set_language(&tree_sitter_python::LANGUAGE.into()).unwrap();
+        parser
+    });
+}
 
 /// Create a SourceLocation from a tree-sitter node.
 fn node_location(node: Node, file_path: &str) -> SourceLocation {
@@ -18,25 +27,22 @@ fn node_location(node: Node, file_path: &str) -> SourceLocation {
 
 /// Parse a single `.py` file and return a [`Module`].
 pub fn parse_file(file_path: &Path, dotted_path: &str) -> Result<Module> {
+    let source = std::fs::read(file_path)
+        .with_context(|| format!("Failed to read {}", file_path.display()))?;
+    parse_bytes(&source, file_path, dotted_path)
+}
+
+/// Parse Python source bytes and return a [`Module`].
+pub fn parse_bytes(source: &[u8], file_path: &Path, dotted_path: &str) -> Result<Module> {
     let is_package = file_path
         .file_name()
         .is_some_and(|f| f == "__init__.py");
 
-    let source = std::fs::read_to_string(file_path)
-        .with_context(|| format!("Failed to read {}", file_path.display()))?;
-
-    let mut parser = Parser::new();
-    let language = tree_sitter_python::LANGUAGE;
-    parser
-        .set_language(&language.into())
-        .context("Failed to set tree-sitter Python language")?;
-
-    let tree = parser
-        .parse(&source, None)
-        .context("tree-sitter failed to parse")?;
+    let tree = PARSER.with_borrow_mut(|parser| {
+        parser.parse(source, None)
+    }).context("tree-sitter failed to parse")?;
 
     let root = tree.root_node();
-    let src = source.as_bytes();
 
     let file_path_str = file_path.display().to_string();
     let mut module = Module {
@@ -52,7 +58,7 @@ pub fn parse_file(file_path: &Path, dotted_path: &str) -> Result<Module> {
     // Walk top-level statements.
     let mut cursor = root.walk();
     for child in root.children(&mut cursor) {
-        process_node(child, src, &mut module);
+        process_node(child, source, &mut module);
     }
 
     Ok(module)
@@ -450,7 +456,7 @@ fn parse_import_name(node: Node, src: &[u8], source_path: &str) -> Option<Import
 ///
 /// For `__init__.py` modules (packages), `.foo` means "submodule foo of this package".
 /// For regular modules, `.foo` means "sibling module foo".
-fn resolve_relative_import(current_module: &str, relative: &str, is_package: bool) -> String {
+pub fn resolve_relative_import(current_module: &str, relative: &str, is_package: bool) -> String {
     let dots = relative.chars().take_while(|c| *c == '.').count();
     let remainder = &relative[dots..];
 
