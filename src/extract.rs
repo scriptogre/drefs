@@ -238,4 +238,97 @@ mod tests {
         let refs = extract_references(content, &DocStyle::Mkdocs);
         assert_eq!(refs.len(), 0);
     }
+
+    // -----------------------------------------------------------------------
+    // doxr-native syntax tests
+    // -----------------------------------------------------------------------
+
+    #[test]
+    fn test_native_bare_brackets_fq() {
+        let content = r#"See [pkg.models.User] for details."#;
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "pkg.models.User");
+        assert_eq!(refs[0].kind, ReferenceKind::FullyQualified);
+    }
+
+    #[test]
+    fn test_native_backtick_brackets_fq() {
+        let content = "See [`pkg.models.User`] for details.";
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "pkg.models.User");
+        assert_eq!(refs[0].kind, ReferenceKind::FullyQualified);
+    }
+
+    #[test]
+    fn test_native_short_name() {
+        let content = r#"See [User] for details."#;
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "User");
+        assert_eq!(refs[0].kind, ReferenceKind::ShortName);
+    }
+
+    #[test]
+    fn test_native_short_name_backticks() {
+        let content = "See [`User`] for details.";
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "User");
+        assert_eq!(refs[0].kind, ReferenceKind::ShortName);
+    }
+
+    #[test]
+    fn test_native_escaped_ignored() {
+        let content = r#"See \[User] for details."#;
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 0);
+    }
+
+    #[test]
+    fn test_native_no_collision_with_mkdocs_explicit() {
+        let content = r#"See [display text][pkg.models.User] for details."#;
+        let refs = extract_references(content, &DocStyle::Mkdocs);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "pkg.models.User");
+        assert_eq!(refs[0].kind, ReferenceKind::FullyQualified);
+    }
+
+    #[test]
+    fn test_native_no_collision_with_mkdocs_autoref() {
+        let content = r#"See [pkg.models.User][] for details."#;
+        let refs = extract_references(content, &DocStyle::Mkdocs);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "pkg.models.User");
+        assert_eq!(refs[0].kind, ReferenceKind::FullyQualified);
+    }
+
+    #[test]
+    fn test_native_ignores_non_identifiers() {
+        let content = r#"See [see above] and [1] and [some/path] for details."#;
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 0);
+    }
+
+    #[test]
+    fn test_native_mixed_with_mkdocs_and_sphinx() {
+        let content = r#"
+    Native: [User]
+    MkDocs: [text][pkg.models.Admin]
+    Sphinx: :class:`pkg.models.User`
+    Native FQ: [pkg.sub.helper_func]
+    "#;
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 4);
+    }
+
+    #[test]
+    fn test_native_underscore_start() {
+        let content = r#"See [_private_func] for details."#;
+        let refs = extract_references(content, &DocStyle::Auto);
+        assert_eq!(refs.len(), 1);
+        assert_eq!(refs[0].target, "_private_func");
+        assert_eq!(refs[0].kind, ReferenceKind::ShortName);
+    }
 }
