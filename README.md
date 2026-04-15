@@ -30,7 +30,7 @@ src/my_pkg/views.py:45:9: DXR001 Unresolved reference `Nonexistent`
 Found 2 errors.
 ```
 
-That's it. No config needed. Auto-detects your src layout and doc style.
+That's it.
 
 ## Supported syntax
 
