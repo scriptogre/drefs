@@ -135,6 +135,75 @@ fn decorated_classes_catches_broken_refs() {
     assert_ne!(code, 0);
 }
 
+// ---------------------------------------------------------------------------
+// Native syntax (Rust-style intra-doc links)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn native_syntax_no_false_positives() {
+    let (stdout, _stderr, _code) = run_doxr("native_syntax");
+    let errors = extract_unresolved(&stdout);
+
+    let must_resolve = vec![
+        // FQ bare brackets
+        "pkg.models.User",
+        "pkg.models.Admin",
+        "pkg.models.User.greet",
+        "pkg.models.User.name",
+        "pkg.models.User.role",
+        // Short names (should NOT appear in errors — they resolve via imports)
+        "User",
+        "Admin",
+        "helper_func",
+        // FQ in mixed context
+        "pkg.models.helper_func",
+    ];
+
+    for valid in &must_resolve {
+        assert!(
+            !errors.contains(&valid.to_string()),
+            "False positive: `{valid}` was flagged but should resolve.\nAll errors: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn native_syntax_catches_broken_refs() {
+    let (stdout, _stderr, code) = run_doxr("native_syntax");
+    let errors = extract_unresolved(&stdout);
+
+    let expected_errors = vec![
+        "Nonexistent",
+        "pkg.models.Fake",
+        "AlsoFake",
+    ];
+
+    for expected in &expected_errors {
+        assert!(
+            errors.contains(&expected.to_string()),
+            "Expected error for `{expected}` but it was not flagged.\nAll errors: {errors:?}"
+        );
+    }
+
+    assert_ne!(code, 0, "Should exit non-zero when errors found");
+}
+
+#[test]
+fn native_syntax_error_count() {
+    let (stdout, _stderr, _code) = run_doxr("native_syntax");
+    let errors = extract_unresolved(&stdout);
+    assert_eq!(
+        errors.len(),
+        3,
+        "Expected exactly 3 errors, got {}.\nErrors: {errors:?}",
+        errors.len()
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Decorated classes, subscript bases, relative __init__.py imports
+// ---------------------------------------------------------------------------
+
 #[test]
 fn decorated_classes_no_false_positives() {
     let (stdout, _stderr, _code) = run_doxr("decorated_classes");

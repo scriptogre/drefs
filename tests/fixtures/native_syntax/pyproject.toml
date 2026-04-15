@@ -1,0 +1,3 @@
+[tool.doxr]
+src = ["src"]
+style = "auto"
