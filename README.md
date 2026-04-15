@@ -6,6 +6,8 @@
 
 An extremely fast Python docstring cross-reference checker, written in Rust.
 
+[~32x faster](BENCHMARKS.md) than catching broken references via `mkdocs build`.
+
 ```bash
 $ uvx doxr .
 src/my_pkg/models.py:12:5: DXR001 Unresolved reference `my_pkg.old_module.Foo`
