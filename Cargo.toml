@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 description = "A hyper-fast Python docstring cross-reference checker"
 license = "MIT"
+repository = "https://github.com/scriptogre/doxr"
+readme = "README.md"
+keywords = ["python", "docstring", "linter", "cross-reference", "documentation"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 clap = { version = "4", features = ["derive"] }
