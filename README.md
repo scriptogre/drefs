@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/scriptogre/doxr/actions/workflows/ci.yml/badge.svg)](https://github.com/scriptogre/doxr/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/doxr.svg)](https://pypi.org/project/doxr/)
+[![Python versions](https://img.shields.io/pypi/pyversions/doxr.svg)](https://pypi.org/project/doxr/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 An extremely fast Python docstring cross-reference checker, written in Rust.

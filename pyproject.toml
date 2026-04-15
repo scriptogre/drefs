@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "A hyper-fast Python docstring cross-reference checker"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.8"
 keywords = ["documentation", "docstring", "cross-reference", "linter", "mkdocs", "sphinx"]
 classifiers = [
     "Development Status :: 3 - Alpha",
