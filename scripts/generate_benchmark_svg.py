@@ -18,7 +18,7 @@ def generate_svg(dark: bool) -> str:
     text_color = "#C9D1D9" if dark else "#24292f"
     grid_color = "rgba(127,127,127,0.25)" if dark else "rgba(127,127,127,0.2)"
     bar_color = "#6340AC" if dark else "#6340AC"
-    font = '-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif'
+    font = '-apple-system,BlinkMacSystemFont,&quot;Segoe UI&quot;,Helvetica,Arial,sans-serif'
 
     # Layout
     width = 600
