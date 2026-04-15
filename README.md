@@ -29,7 +29,10 @@ Found 2 errors.
 
 - Checks docstring cross-references without building docs
 - No config needed
-- MkDocs, Sphinx, and `[Symbol]` syntax
+- MkDocs, Sphinx, and Rust-style syntax
+  - `[text][pkg.mod.Class]`
+  - `` :class:`pkg.mod.Class` ``
+  - `[Symbol]`, `[pkg.mod.Class]`
 - Follows re-exports and inheritance chains
 - Drops into any CI pipeline (Ruff output format)
 - PyCharm plugin: Ctrl+Click, squiggles, highlighting
