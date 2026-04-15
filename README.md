@@ -18,77 +18,56 @@ An extremely fast Python docstring cross-reference checker, written in Rust.
   <i>Validating cross-references in <a href="https://github.com/tinygrad/tinygrad">tinygrad</a> (697 Python files). <a href="BENCHMARKS.md">~460x faster.</a></i>
 </p>
 
+## Usage
+
 ```bash
-$ uvx doxr .
+uvx doxr .
+```
+
+That's it. No config needed. Auto-detects your src layout and doc style.
+
+```
 src/my_pkg/models.py:12:5: DXR001 Unresolved reference `my_pkg.old_module.Foo`
 src/my_pkg/views.py:45:9: DXR001 Unresolved reference `Nonexistent`
 Found 2 errors.
 ```
 
-## Highlights
+## Supported syntax
 
-- Checks docstring cross-references without building docs
-- No config needed
-- Supports:
-  - MkDocs: `[text][pkg.mod.Class]`
-  - Sphinx: `` :class:`pkg.mod.Class` ``
-  - Rust-style: `[Symbol]`, `[pkg.mod.Class]`
-- Understands `__init__.py` re-exports and class inheritance
-- Drops into any CI pipeline (Ruff output format)
-- PyCharm plugin: Ctrl+Click, squiggles, highlighting
+- MkDocs: `[text][pkg.mod.Class]`, `[pkg.mod.Class][]`
+- Sphinx: `` :class:`pkg.mod.Class` ``
+- Rust-style: `[Symbol]`, `` [`Symbol`] ``, `[pkg.mod.Class]`
 
-## Installation
+`[User]` resolves via the current file's imports. `[pkg.models.User]` resolves directly. Escape with `\[not a ref\]`.
 
-```bash
-# Run without installing (recommended)
-uvx doxr .
-
-# Or install globally
-uv tool install doxr
-
-# Or via pip
-pip install doxr
-```
+doxr understands `__init__.py` re-exports, inheritance chains, and `self.x` attributes.
 
 ## Configuration
 
-doxr works out of the box. Optionally, add to your `pyproject.toml`:
+Optional. Add to `pyproject.toml`:
 
 ```toml
 [tool.doxr]
 src = ["src"]                  # auto-detected if omitted
 style = "auto"                 # "mkdocs" | "sphinx" | "auto"
-inventories = [                # external symbol validation
+inventories = [                # validate against external symbols
     "https://docs.python.org/3/objects.inv",
 ]
 ```
 
-## Cross-Reference Syntax
-
-doxr supports three syntax families:
-
-| Syntax | Style |
-|---|---|
-| `[text][pkg.mod.Class]`, `[pkg.mod.Class][]` | MkDocs |
-| `` :class:`pkg.mod.Class` `` | Sphinx |
-| `[Symbol]`, `` [`Symbol`] ``, `[pkg.mod.Class]` | Rust-style intra-doc links |
-
-The `[Symbol]` syntax follows Rust's intra-doc links. `[User]` resolves via the current file's imports. `[pkg.models.User]` resolves directly. Escape with `\[not a ref\]`.
-
-## Editor Support
+## Editor support
 
 ### PyCharm / IntelliJ
 
-The doxr PyCharm plugin provides:
-- Per-segment **Ctrl+Click** navigation on dotted paths (just like import statements)
-- **Syntax highlighting** on cross-reference paths
-- **Red squiggles** on unresolved references
+- Ctrl+Click on each segment of a dotted path
+- Syntax highlighting on cross-references
+- Red squiggles on broken references
 
 Install from `editors/pycharm/build/distributions/doxr-pycharm-*.zip` via Settings > Plugins > Install from Disk.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and guidelines.
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
