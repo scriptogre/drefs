@@ -15,7 +15,11 @@ use std::path::PathBuf;
 use std::process;
 
 #[derive(ClapParser)]
-#[command(name = "doxr", version, about = "A hyper-fast Python docstring cross-reference checker")]
+#[command(
+    name = "doxr",
+    version,
+    about = "A hyper-fast Python docstring cross-reference checker"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Command>,
@@ -109,7 +113,10 @@ fn main() -> Result<()> {
                 }
             } else {
                 // Fast scan: line-based import/definition extraction only.
-                Some((file_str, fast_scan::fast_scan(&content, &dm.file_path, &dm.dotted_path)))
+                Some((
+                    file_str,
+                    fast_scan::fast_scan(&content, &dm.file_path, &dm.dotted_path),
+                ))
             }
         })
         .collect();

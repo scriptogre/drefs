@@ -30,14 +30,12 @@ pub struct Reference {
 // ---------------------------------------------------------------------------
 
 // [display text][identifier]
-static MKDOCS_EXPLICIT: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\[[^\]]*\]\[([a-zA-Z_][\w.]*)\]").unwrap()
-});
+static MKDOCS_EXPLICIT: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[[^\]]*\]\[([a-zA-Z_][\w.]*)\]").unwrap());
 
 // [identifier][]  (autoref shorthand)
-static MKDOCS_AUTOREF: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\[([a-zA-Z_][\w.]*)\]\[\]").unwrap()
-});
+static MKDOCS_AUTOREF: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[([a-zA-Z_][\w.]*)\]\[\]").unwrap());
 
 // ---------------------------------------------------------------------------
 // Sphinx patterns
@@ -54,9 +52,8 @@ static SPHINX_XREF: LazyLock<Regex> = LazyLock::new(|| {
 
 // [identifier] or [`identifier`] — doxr-native (Rust-style intra-doc links).
 // Lookahead/lookbehind handled in code (regex crate doesn't support them).
-static DOXR_NATIVE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\[`?([a-zA-Z_][\w.]*)`?\]").unwrap()
-});
+static DOXR_NATIVE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[`?([a-zA-Z_][\w.]*)`?\]").unwrap());
 
 // ---------------------------------------------------------------------------
 // Public API

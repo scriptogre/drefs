@@ -12,10 +12,7 @@ pub struct DiscoveredModule {
 /// Walk `src_dirs`, find all `.py` files, and compute their dotted module paths.
 ///
 /// `exclude` patterns are applied as gitignore-style globs.
-pub fn discover_modules(
-    src_dirs: &[PathBuf],
-    exclude: &[String],
-) -> Vec<DiscoveredModule> {
+pub fn discover_modules(src_dirs: &[PathBuf], exclude: &[String]) -> Vec<DiscoveredModule> {
     let mut modules = Vec::new();
 
     for src_dir in src_dirs {
@@ -104,10 +101,7 @@ mod tests {
     fn test_init_module() {
         let path = Path::new("/src/my_pkg/foo/__init__.py");
         let root = Path::new("/src");
-        assert_eq!(
-            path_to_dotted(path, root),
-            Some("my_pkg.foo".to_string())
-        );
+        assert_eq!(path_to_dotted(path, root), Some("my_pkg.foo".to_string()));
     }
 
     #[test]

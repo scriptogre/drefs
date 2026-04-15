@@ -1,6 +1,6 @@
 /// Diagnostics: validate references and emit Ruff-format output.
 use crate::config::DoxrConfig;
-use crate::extract::{extract_references, Reference, ReferenceKind};
+use crate::extract::{Reference, ReferenceKind, extract_references};
 use crate::graph::SymbolGraph;
 use crate::inventory::Inventory;
 use std::path::Path;
@@ -128,9 +128,10 @@ fn is_explicitly_skipped(reference: &Reference, config: &DoxrConfig) -> bool {
 /// Check if a target's root module is part of the project we're checking.
 fn is_internal(target: &str, graph: &SymbolGraph) -> bool {
     let root = target.split('.').next().unwrap_or("");
-    graph.modules.keys().any(|path| {
-        path == root || path.starts_with(&format!("{root}."))
-    })
+    graph
+        .modules
+        .keys()
+        .any(|path| path == root || path.starts_with(&format!("{root}.")))
 }
 
 /// Expand a short name (e.g. `User`) to a fully-qualified path using the

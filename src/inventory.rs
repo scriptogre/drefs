@@ -82,10 +82,7 @@ impl Inventory {
 
         // Validate header.
         if !header_lines[0].contains("Sphinx inventory version 2") {
-            bail!(
-                "Unsupported inventory format: {}",
-                header_lines[0]
-            );
+            bail!("Unsupported inventory format: {}", header_lines[0]);
         }
 
         // Extract project name.
@@ -134,8 +131,8 @@ mod tests {
 
     #[test]
     fn test_parse_inv() {
-        use flate2::write::ZlibEncoder;
         use flate2::Compression;
+        use flate2::write::ZlibEncoder;
         use std::io::Write;
 
         // Build a minimal objects.inv in memory.

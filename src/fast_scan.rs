@@ -15,9 +15,7 @@ pub fn has_docstrings(source: &[u8]) -> bool {
 /// Fast-scan a Python file to extract imports and top-level definitions.
 /// Does NOT extract docstrings, class members, bases, or attributes.
 pub fn fast_scan(source: &[u8], file_path: &Path, dotted_path: &str) -> Module {
-    let is_package = file_path
-        .file_name()
-        .is_some_and(|f| f == "__init__.py");
+    let is_package = file_path.file_name().is_some_and(|f| f == "__init__.py");
 
     let mut module = Module {
         path: dotted_path.to_string(),
@@ -91,14 +89,19 @@ pub fn fast_scan(source: &[u8], file_path: &Path, dotted_path: &str) -> Module {
 }
 
 fn strip_leading_spaces(line: &[u8]) -> &[u8] {
-    let start = line.iter().position(|b| *b != b' ' && *b != b'\t').unwrap_or(line.len());
+    let start = line
+        .iter()
+        .position(|b| *b != b' ' && *b != b'\t')
+        .unwrap_or(line.len());
     &line[start..]
 }
 
 /// Extract a class/function name from a line like `class Foo(Bar):` or `def baz(x):`.
 fn extract_def_name(line: &[u8], prefix: &[u8]) -> Option<String> {
     let rest = &line[prefix.len()..];
-    let end = rest.iter().position(|b| !b.is_ascii_alphanumeric() && *b != b'_')?;
+    let end = rest
+        .iter()
+        .position(|b| !b.is_ascii_alphanumeric() && *b != b'_')?;
     if end == 0 {
         return None;
     }
@@ -113,8 +116,12 @@ fn scan_from_import(line: &[u8], module: &mut Module) {
     };
 
     // Match: from <source> import <names>
-    let Some(rest) = line_str.strip_prefix("from ") else { return };
-    let Some((source_raw, rest)) = rest.split_once(" import ") else { return };
+    let Some(rest) = line_str.strip_prefix("from ") else {
+        return;
+    };
+    let Some((source_raw, rest)) = rest.split_once(" import ") else {
+        return;
+    };
     let source_raw = source_raw.trim();
 
     // Resolve relative imports.
@@ -181,16 +188,25 @@ fn scan_import(line: &[u8], module: &mut Module) {
             let alias = alias.trim();
             let name = dotted.rsplit('.').next().unwrap_or(dotted).to_string();
             module.imports.push(Import {
-                source: dotted.rsplit_once('.').map(|(p, _)| p.to_string()).unwrap_or_default(),
+                source: dotted
+                    .rsplit_once('.')
+                    .map(|(p, _)| p.to_string())
+                    .unwrap_or_default(),
                 name,
                 alias: Some(alias.to_string()),
             });
         } else {
             let dotted = part.trim();
-            if dotted.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.') {
+            if dotted
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+            {
                 let name = dotted.rsplit('.').next().unwrap_or(dotted).to_string();
                 module.imports.push(Import {
-                    source: dotted.rsplit_once('.').map(|(p, _)| p.to_string()).unwrap_or_default(),
+                    source: dotted
+                        .rsplit_once('.')
+                        .map(|(p, _)| p.to_string())
+                        .unwrap_or_default(),
                     name,
                     alias: None,
                 });

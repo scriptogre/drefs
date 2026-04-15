@@ -69,10 +69,7 @@ impl DoxrConfig {
         let pyproject: PyProject = toml::from_str(&content)
             .with_context(|| format!("Failed to parse {}", pyproject_path.display()))?;
 
-        Ok(pyproject
-            .tool
-            .and_then(|t| t.doxr)
-            .unwrap_or_default())
+        Ok(pyproject.tool.and_then(|t| t.doxr).unwrap_or_default())
     }
 
     /// Return effective source directories, auto-detecting if not configured.
@@ -84,7 +81,8 @@ impl DoxrConfig {
     /// 4. Fallback → `["."]`
     pub fn effective_src(&self, project_root: &Path) -> Vec<PathBuf> {
         if !self.src.is_empty() {
-            return self.src
+            return self
+                .src
                 .iter()
                 .map(|s| {
                     if s.is_absolute() {
@@ -116,9 +114,7 @@ impl DoxrConfig {
             return self.style.clone();
         }
 
-        if project_root.join("mkdocs.yml").exists()
-            || project_root.join("mkdocs.yaml").exists()
-        {
+        if project_root.join("mkdocs.yml").exists() || project_root.join("mkdocs.yaml").exists() {
             return DocStyle::Mkdocs;
         }
 
@@ -139,7 +135,7 @@ fn has_python_packages(dir: &Path) -> bool {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return false;
     };
-    entries.filter_map(|e| e.ok()).any(|entry| {
-        entry.path().is_dir() && entry.path().join("__init__.py").exists()
-    })
+    entries
+        .filter_map(|e| e.ok())
+        .any(|entry| entry.path().is_dir() && entry.path().join("__init__.py").exists())
 }

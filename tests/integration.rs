@@ -129,7 +129,10 @@ fn decorated_classes_catches_broken_refs() {
         "pkg.sub.config.Config.nonexistent",
     ];
     for e in &expected {
-        assert!(errors.contains(&e.to_string()), "Missing expected error: {e}");
+        assert!(
+            errors.contains(&e.to_string()),
+            "Missing expected error: {e}"
+        );
     }
     assert_eq!(errors.len(), 3);
     assert_ne!(code, 0);
@@ -172,11 +175,7 @@ fn native_syntax_catches_broken_refs() {
     let (stdout, _stderr, code) = run_doxr("native_syntax");
     let errors = extract_unresolved(&stdout);
 
-    let expected_errors = vec![
-        "Nonexistent",
-        "pkg.models.Fake",
-        "AlsoFake",
-    ];
+    let expected_errors = vec!["Nonexistent", "pkg.models.Fake", "AlsoFake"];
 
     for expected in &expected_errors {
         assert!(

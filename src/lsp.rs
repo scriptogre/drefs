@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 
 use crate::config::DoxrConfig;
 use crate::discover;
-use crate::extract::{extract_references, Reference};
+use crate::extract::{Reference, extract_references};
 use crate::graph::{SourceLocation, SymbolGraph};
 use crate::inventory::Inventory;
 use crate::parse;

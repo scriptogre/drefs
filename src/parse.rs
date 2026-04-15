@@ -34,13 +34,11 @@ pub fn parse_file(file_path: &Path, dotted_path: &str) -> Result<Module> {
 
 /// Parse Python source bytes and return a [`Module`].
 pub fn parse_bytes(source: &[u8], file_path: &Path, dotted_path: &str) -> Result<Module> {
-    let is_package = file_path
-        .file_name()
-        .is_some_and(|f| f == "__init__.py");
+    let is_package = file_path.file_name().is_some_and(|f| f == "__init__.py");
 
-    let tree = PARSER.with_borrow_mut(|parser| {
-        parser.parse(source, None)
-    }).context("tree-sitter failed to parse")?;
+    let tree = PARSER
+        .with_borrow_mut(|parser| parser.parse(source, None))
+        .context("tree-sitter failed to parse")?;
 
     let root = tree.root_node();
 
@@ -65,11 +63,7 @@ pub fn parse_bytes(source: &[u8], file_path: &Path, dotted_path: &str) -> Result
 }
 
 /// Process a single AST node, extracting definitions/imports/docstrings.
-fn process_node(
-    node: Node,
-    src: &[u8],
-    module: &mut Module,
-) {
+fn process_node(node: Node, src: &[u8], module: &mut Module) {
     match node.kind() {
         "class_definition" => {
             if let Some(sym) = extract_class(node, src, module) {
@@ -225,9 +219,13 @@ fn extract_attribute(node: Node, src: &[u8], defs: &mut HashMap<String, Symbol>)
     let Some(child) = node.child(0) else { return };
     match child.kind() {
         "assignment" => {
-            let Some(left) = child.child_by_field_name("left") else { return };
+            let Some(left) = child.child_by_field_name("left") else {
+                return;
+            };
             if left.kind() == "identifier" {
-                let Some(name) = left.utf8_text(src).ok().map(String::from) else { return };
+                let Some(name) = left.utf8_text(src).ok().map(String::from) else {
+                    return;
+                };
                 defs.insert(
                     name.clone(),
                     Symbol {
@@ -264,7 +262,9 @@ fn extract_attribute(node: Node, src: &[u8], defs: &mut HashMap<String, Symbol>)
 /// Walk a function body to find `self.X = ...` assignments and register
 /// them as class-level attribute members.
 fn extract_self_attributes(func_node: Node, src: &[u8], members: &mut HashMap<String, Symbol>) {
-    let Some(body) = func_node.child_by_field_name("body") else { return };
+    let Some(body) = func_node.child_by_field_name("body") else {
+        return;
+    };
     walk_for_self_attrs(body, src, members);
 }
 
@@ -301,9 +301,8 @@ fn walk_for_self_attrs(node: Node, src: &[u8], members: &mut HashMap<String, Sym
                 }
             }
             // Recurse into if/else/try blocks inside __init__.
-            "if_statement" | "else_clause" | "elif_clause"
-            | "try_statement" | "except_clause" | "finally_clause"
-            | "with_statement" | "for_statement" | "while_statement" => {
+            "if_statement" | "else_clause" | "elif_clause" | "try_statement" | "except_clause"
+            | "finally_clause" | "with_statement" | "for_statement" | "while_statement" => {
                 walk_for_self_attrs(child, src, members);
             }
             "block" => {
@@ -331,7 +330,8 @@ fn extract_from_import(node: Node, src: &[u8], module: &mut Module) {
     //
     // We need to combine import_prefix + module_name for relative imports.
     let module_name_node = node.child_by_field_name("module_name");
-    let prefix_node = node.children(&mut node.walk())
+    let prefix_node = node
+        .children(&mut node.walk())
         .find(|c| c.kind() == "import_prefix");
 
     let source_text = match (prefix_node, module_name_node) {
@@ -505,11 +505,7 @@ fn try_extract_docstring(node: Node, src: &[u8]) -> Option<Docstring> {
     })
 }
 
-fn handle_expression_statement(
-    node: Node,
-    src: &[u8],
-    module: &mut Module,
-) {
+fn handle_expression_statement(node: Node, src: &[u8], module: &mut Module) {
     // Check for docstring first.
     if let Some(ds) = try_extract_docstring(node, src) {
         module.docstrings.push(ds);
