@@ -33,7 +33,7 @@ Found 2 errors.
   - MkDocs: `[text][pkg.mod.Class]`
   - Sphinx: `` :class:`pkg.mod.Class` ``
   - Rust-style: `[Symbol]`, `[pkg.mod.Class]`
-- Follows re-exports and inheritance chains
+- Understands `__init__.py` re-exports and class inheritance
 - Drops into any CI pipeline (Ruff output format)
 - PyCharm plugin: Ctrl+Click, squiggles, highlighting
 
