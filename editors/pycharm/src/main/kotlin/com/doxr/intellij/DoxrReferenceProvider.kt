@@ -9,8 +9,8 @@ import com.jetbrains.python.psi.PyStringLiteralExpression
 import java.util.regex.Pattern
 
 /**
- * Finds MkDocs and Sphinx cross-reference patterns in docstrings and creates
- * per-segment Python references for the dotted paths.
+ * Finds MkDocs, Sphinx, and doxr-native cross-reference patterns in docstrings
+ * and creates per-segment Python references for the dotted paths.
  */
 class DoxrReferenceProvider : PsiReferenceProvider() {
 
@@ -25,6 +25,9 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
         private val SPHINX_XREF = Pattern.compile(
             ":(class|func|meth|mod|attr|exc|data|obj|const|type):`~?([^`]+)`"
         )
+
+        // [identifier] or [`identifier`] — doxr-native (Rust-style intra-doc links)
+        private val DOXR_NATIVE = Pattern.compile("\\[`?([a-zA-Z_][\\w.]*)`?\\]")
     }
 
     override fun getReferencesByElement(
@@ -51,6 +54,14 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
         // Extract Sphinx refs (group 2 = the dotted path).
         findRefs(SPHINX_XREF, content, 2, contentOffset, stringLiteral, references)
 
+        // Collect offsets from MkDocs/Sphinx refs to avoid double-extracting.
+        val existingOffsets = references.mapNotNull { ref ->
+            (ref as? DoxrPythonReference)?.rangeInElement?.startOffset
+        }.toSet()
+
+        // Extract doxr-native refs.
+        findNativeRefs(content, contentOffset, stringLiteral, existingOffsets, references)
+
         return references.toTypedArray()
     }
 
@@ -74,6 +85,46 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
 
             val pathStart = matcher.start(group) + (if (matcher.group(group).startsWith("~")) 1 else 0)
             createSegmentReferences(path, contentOffset + pathStart, element, out)
+        }
+    }
+
+    private fun findNativeRefs(
+        content: String,
+        contentOffset: Int,
+        element: PyStringLiteralExpression,
+        existingOffsets: Set<Int>,
+        out: MutableList<PsiReference>,
+    ) {
+        val matcher = DOXR_NATIVE.matcher(content)
+        while (matcher.find()) {
+            val start = matcher.start()
+
+            // Skip if preceded by \ (escaped), ] (MkDocs second bracket),
+            // or word char (subscript like AbstractBase[int]).
+            if (start > 0) {
+                val prev = content[start - 1]
+                if (prev == '\\' || prev == ']' || prev.isLetterOrDigit() || prev == '_') continue
+            }
+
+            // Skip if followed by [ (MkDocs [path][] first part).
+            val end = matcher.end()
+            if (end < content.length && content[end] == '[') continue
+
+            val path = matcher.group(1) ?: continue
+            val pathStart = matcher.start(1)
+
+            // Skip if this offset was already captured by MkDocs/Sphinx patterns.
+            if (existingOffsets.contains(contentOffset + pathStart)) continue
+
+            if (path.contains('.')) {
+                // Fully qualified — same per-segment references as MkDocs/Sphinx.
+                if (!path[0].isLowerCase() && path[0] != '_') continue
+                createSegmentReferences(path, contentOffset + pathStart, element, out)
+            } else {
+                // Short name — single reference, resolved via file scope.
+                val range = TextRange(contentOffset + pathStart, contentOffset + pathStart + path.length)
+                out.add(DoxrPythonReference(element, range, path, resolveShort = true))
+            }
         }
     }
 
