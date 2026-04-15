@@ -5,6 +5,15 @@ use crate::config::DocStyle;
 use regex::Regex;
 use std::sync::LazyLock;
 
+/// Whether a reference is fully qualified or a short name needing expansion.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ReferenceKind {
+    /// A dotted path like `pkg.models.User` — resolve directly.
+    FullyQualified,
+    /// A short name like `User` — expand via imports/definitions first.
+    ShortName,
+}
+
 /// A cross-reference found in a docstring.
 #[derive(Debug, Clone)]
 pub struct Reference {
@@ -12,6 +21,8 @@ pub struct Reference {
     pub target: String,
     /// Byte offset within the docstring where this reference starts.
     pub offset: usize,
+    /// Whether this is a fully-qualified path or a short name.
+    pub kind: ReferenceKind,
 }
 
 // ---------------------------------------------------------------------------
@@ -38,6 +49,16 @@ static SPHINX_XREF: LazyLock<Regex> = LazyLock::new(|| {
 });
 
 // ---------------------------------------------------------------------------
+// doxr-native patterns (Rust-style intra-doc links)
+// ---------------------------------------------------------------------------
+
+// [identifier] or [`identifier`] — doxr-native (Rust-style intra-doc links).
+// Lookahead/lookbehind handled in code (regex crate doesn't support them).
+static DOXR_NATIVE: LazyLock<Regex> = LazyLock::new(|| {
+    Regex::new(r"\[`?([a-zA-Z_][\w.]*)`?\]").unwrap()
+});
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -51,15 +72,21 @@ fn is_fully_qualified(s: &str) -> bool {
 
 /// Extract all cross-references from a docstring's content.
 pub fn extract_references(content: &str, style: &DocStyle) -> Vec<Reference> {
-    match style {
+    let mut refs = match style {
         DocStyle::Mkdocs => extract_mkdocs(content),
         DocStyle::Sphinx => extract_sphinx(content),
         DocStyle::Auto => {
-            let mut refs = extract_mkdocs(content);
-            refs.extend(extract_sphinx(content));
-            refs
+            let mut r = extract_mkdocs(content);
+            r.extend(extract_sphinx(content));
+            r
         }
-    }
+    };
+
+    // Always extract doxr-native refs, deduplicating against existing offsets.
+    let existing_offsets: Vec<usize> = refs.iter().map(|r| r.offset).collect();
+    refs.extend(extract_native(content, &existing_offsets));
+
+    refs
 }
 
 fn extract_mkdocs(content: &str) -> Vec<Reference> {
@@ -71,6 +98,7 @@ fn extract_mkdocs(content: &str) -> Vec<Reference> {
                 refs.push(Reference {
                     target: m.as_str().to_string(),
                     offset: m.start(),
+                    kind: ReferenceKind::FullyQualified,
                 });
             }
         }
@@ -82,6 +110,7 @@ fn extract_mkdocs(content: &str) -> Vec<Reference> {
                 refs.push(Reference {
                     target: m.as_str().to_string(),
                     offset: m.start(),
+                    kind: ReferenceKind::FullyQualified,
                 });
             }
         }
@@ -102,8 +131,56 @@ fn extract_sphinx(content: &str) -> Vec<Reference> {
                 refs.push(Reference {
                     target: target.to_string(),
                     offset: m.start(),
+                    kind: ReferenceKind::FullyQualified,
                 });
             }
+        }
+    }
+
+    refs
+}
+
+fn extract_native(content: &str, existing_offsets: &[usize]) -> Vec<Reference> {
+    let mut refs = Vec::new();
+    let bytes = content.as_bytes();
+
+    for cap in DOXR_NATIVE.captures_iter(content) {
+        let full_match = cap.get(0).unwrap();
+        let start = full_match.start();
+        let end = full_match.end();
+
+        // Skip if preceded by \ (escaped) or ] (MkDocs [text][path] second part).
+        if start > 0 {
+            let prev = bytes[start - 1];
+            if prev == b'\\' || prev == b']' {
+                continue;
+            }
+        }
+
+        // Skip if followed by [ (MkDocs [path][] first part).
+        if end < bytes.len() && bytes[end] == b'[' {
+            continue;
+        }
+
+        if let Some(m) = cap.get(1) {
+            let target = m.as_str().to_string();
+
+            // Skip if this offset was already captured by MkDocs/Sphinx patterns.
+            if existing_offsets.contains(&m.start()) {
+                continue;
+            }
+
+            let kind = if target.contains('.') {
+                ReferenceKind::FullyQualified
+            } else {
+                ReferenceKind::ShortName
+            };
+
+            refs.push(Reference {
+                target,
+                offset: m.start(),
+                kind,
+            });
         }
     }
 
