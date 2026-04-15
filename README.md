@@ -8,14 +8,14 @@ An extremely fast Python docstring cross-reference checker, written in Rust.
 
 ## Highlights
 
-- Catches broken `[text][pkg.mod.Class]` (MkDocs), `:class:`pkg.mod.Class`` (Sphinx), and `[Symbol]` (doxr-native) references in docstrings
+- Catches broken `[text][pkg.mod.Class]` (MkDocs), `:class:`pkg.mod.Class`` (Sphinx), and `[Symbol]` (Rust-style intra-doc links) references in docstrings
 - Works **without running a full docs build** -- validates against actual source code symbols
 - Zero configuration -- auto-detects src layout and doc style
 - Ruff-compatible output format for seamless CI integration
 - Resolves re-exports, inheritance chains, `self.x` attributes, and `__init__.py` re-exports
 - Supports external symbol validation via Sphinx `objects.inv` inventories
 - PyCharm plugin with per-segment Ctrl+Click navigation and squiggles on broken refs
-- Rust-style `[Symbol]` / `` [`Symbol`] `` intra-doc links with short name resolution via imports
+- Rust-style intra-doc links (`[Symbol]`, `` [`Symbol`] ``) with short name resolution via imports
 
 ## Getting Started
 
@@ -67,9 +67,9 @@ doxr supports three syntax families:
 |---|---|
 | `[text][pkg.mod.Class]`, `[pkg.mod.Class][]` | MkDocs |
 | `:class:`pkg.mod.Class`` | Sphinx |
-| `[Symbol]`, `` [`Symbol`] ``, `[pkg.mod.Class]` | doxr-native |
+| `[Symbol]`, `` [`Symbol`] ``, `[pkg.mod.Class]` | Rust-style intra-doc links |
 
-The doxr-native syntax is inspired by Rust's intra-doc links. `[User]` resolves via the current file's imports. `[pkg.models.User]` resolves directly. Escape with `\[not a ref\]`.
+The `[Symbol]` syntax follows Rust's intra-doc links. `[User]` resolves via the current file's imports. `[pkg.models.User]` resolves directly. Escape with `\[not a ref\]`.
 
 ## Editor Support
 
