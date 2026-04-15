@@ -27,12 +27,12 @@ Found 2 errors.
 
 ## Highlights
 
-- Validates against source code directly, **no docs build** required
-- **Zero config**, auto-detects src layout and doc style
-- Supports MkDocs, Sphinx, and Rust-style `[Symbol]` syntax
-- Resolves re-exports, inheritance, and `self.x` attributes
-- Ruff-compatible output format (`file:line:col: DXR001 message`)
-- PyCharm plugin with **Ctrl+Click** navigation and red squiggles
+- Checks docstring cross-references without building docs
+- Works out of the box, no config needed
+- MkDocs, Sphinx, and Rust-style `[Symbol]` syntax
+- Follows re-exports and inheritance chains
+- Drops into any CI pipeline (Ruff output format)
+- PyCharm plugin: Ctrl+Click, squiggles, highlighting
 
 ## Installation
 
