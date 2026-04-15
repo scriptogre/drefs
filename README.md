@@ -6,22 +6,21 @@
 
 An extremely fast Python docstring cross-reference checker, written in Rust.
 
+```bash
+$ uvx doxr .
+src/my_pkg/models.py:12:5: DXR001 Unresolved reference `my_pkg.old_module.Foo`
+src/my_pkg/views.py:45:9: DXR001 Unresolved reference `Nonexistent`
+Found 2 errors.
+```
+
 ## Highlights
 
 - Validates against source code directly — **no docs build** required
 - **Zero config** — auto-detects src layout and doc style
 - Supports MkDocs, Sphinx, and Rust-style `[Symbol]` syntax
 - Resolves re-exports, inheritance, and `self.x` attributes
-- Ruff-compatible output for **CI integration**
-- PyCharm plugin with **Ctrl+Click** and squiggles
-
-## Getting Started
-
-```bash
-uvx doxr .
-```
-
-That's it. No config file needed.
+- Ruff-compatible output format (`file:line:col: DXR001 message`)
+- PyCharm plugin with **Ctrl+Click** navigation and red squiggles
 
 ## Installation
 
@@ -36,17 +35,9 @@ uv tool install doxr
 pip install doxr
 ```
 
-## Output
-
-```
-src/my_pkg/models.py:12:5: DXR001 Unresolved reference `my_pkg.old_module.Foo`
-src/my_pkg/views.py:45:9: DXR001 Unresolved reference `Nonexistent`
-Found 2 errors.
-```
-
 ## Configuration
 
-doxr works out of the box with zero configuration. Optionally, add to your `pyproject.toml`:
+doxr works out of the box. Optionally, add to your `pyproject.toml`:
 
 ```toml
 [tool.doxr]
