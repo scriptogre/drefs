@@ -1,68 +1,104 @@
-"""Generate benchmark bar chart SVGs for README (dark and light variants)."""
+"""Generate benchmark bar chart SVGs matching ruff's style."""
 
 BENCHMARKS = [
-    {"label": "doxr", "ms": 110, "color": "#4ade80"},
-    {"label": "mkdocs build --strict", "ms": 51000, "color": "#6b7280"},
+    {"label": "doxr", "seconds": 0.110, "bold": True},
+    {"label": "mkdocs build --strict", "seconds": 51.0, "bold": False},
 ]
 
-PROJECT = "tinygrad"
-FILES = "697 Python files"
-SPEEDUP = "~460x faster"
+CAPTION = "Validating cross-references in tinygrad (697 Python files)"
+
+
+def format_time(s: float) -> str:
+    if s < 1:
+        return f"{s * 1000:.0f}ms"
+    return f"{s:.1f}s"
 
 
 def generate_svg(dark: bool) -> str:
-    bg = "#0d1117" if dark else "#ffffff"
-    text_color = "#e6edf3" if dark else "#1f2328"
-    sub_color = "#8b949e" if dark else "#656d76"
-    bar_bg = "#161b22" if dark else "#f6f8fa"
-    border = "#30363d" if dark else "#d0d7de"
+    text_color = "#C9D1D9" if dark else "#24292f"
+    grid_color = "rgba(127,127,127,0.25)" if dark else "rgba(127,127,127,0.2)"
+    bar_color = "#6340AC" if dark else "#6340AC"
+    font = '-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif'
 
-    width = 640
-    height = 180
-    margin_left = 200
-    margin_right = 40
-    bar_height = 32
-    bar_gap = 24
-    top = 60
+    # Layout
+    width = 600
+    left_margin = 170
+    right_margin = 60
+    top_margin = 25
+    chart_width = width - left_margin - right_margin
+    bar_height = 16
+    bar_gap = 28
+    chart_height = len(BENCHMARKS) * (bar_height + bar_gap) - bar_gap + 10
+    axis_height = 25
+    caption_height = 20
+    total_height = top_margin + chart_height + axis_height + caption_height
 
-    max_ms = max(b["ms"] for b in BENCHMARKS)
-    bar_area = width - margin_left - margin_right
+    max_seconds = max(b["seconds"] for b in BENCHMARKS)
+    # Round up to nice number for axis
+    if max_seconds > 30:
+        axis_max = 60
+        tick_step = 20
+    elif max_seconds > 10:
+        axis_max = max_seconds * 1.15
+        tick_step = 10
+    else:
+        axis_max = max_seconds * 1.15
+        tick_step = 1
 
-    bars_svg = ""
+    ticks = []
+    t = 0
+    while t <= axis_max:
+        ticks.append(t)
+        t += tick_step
+
+    def x_pos(seconds: float) -> float:
+        return (seconds / axis_max) * chart_width
+
+    svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {total_height}">\n'
+    svg += f'  <g transform="translate({left_margin},{top_margin})">\n'
+
+    # Grid lines
+    for t in ticks:
+        x = x_pos(t)
+        svg += f'    <line x1="{x:.1f}" y1="0" x2="{x:.1f}" y2="{chart_height}" '
+        svg += f'stroke="{grid_color}" stroke-width="1"/>\n'
+
+    # Bars
     for i, b in enumerate(BENCHMARKS):
-        y = top + i * (bar_height + bar_gap)
-        bar_width = max((b["ms"] / max_ms) * bar_area, 4)
+        y = i * (bar_height + bar_gap) + 5
+        bw = max(x_pos(b["seconds"]), 2)
+        weight = ' font-weight="bold"' if b["bold"] else ""
 
-        # Label
-        bars_svg += f'  <text x="{margin_left - 12}" y="{y + bar_height / 2 + 5}" '
-        bars_svg += f'font-family="system-ui, -apple-system, sans-serif" font-size="14" '
-        bars_svg += f'fill="{text_color}" text-anchor="end">{b["label"]}</text>\n'
-
-        # Bar background
-        bars_svg += f'  <rect x="{margin_left}" y="{y}" width="{bar_area}" '
-        bars_svg += f'height="{bar_height}" rx="4" fill="{bar_bg}"/>\n'
+        # Label (left)
+        svg += f'    <text x="-12" y="{y + bar_height / 2 + 4}" text-anchor="end" '
+        svg += f'font-family="{font}" font-size="13px" fill="{text_color}"{weight}>'
+        svg += f'{b["label"]}</text>\n'
 
         # Bar
-        bars_svg += f'  <rect x="{margin_left}" y="{y}" width="{bar_width:.1f}" '
-        bars_svg += f'height="{bar_height}" rx="4" fill="{b["color"]}"/>\n'
+        svg += f'    <rect x="0" y="{y}" width="{bw:.1f}" height="{bar_height}" '
+        svg += f'rx="2" fill="{bar_color}"/>\n'
 
-        # Time label
-        if b["ms"] >= 1000:
-            time_str = f'{b["ms"] / 1000:.1f}s'
-        else:
-            time_str = f'{b["ms"]}ms'
+        # Value label (right of bar)
+        svg += f'    <text x="{bw + 6:.1f}" y="{y + bar_height / 2 + 4}" text-anchor="start" '
+        svg += f'font-family="{font}" font-size="12px" fill="{text_color}"{weight}>'
+        svg += f'{format_time(b["seconds"])}</text>\n'
 
-        label_x = margin_left + bar_width + 8
-        bars_svg += f'  <text x="{label_x}" y="{y + bar_height / 2 + 5}" '
-        bars_svg += f'font-family="system-ui, -apple-system, sans-serif" font-size="13" '
-        bars_svg += f'fill="{sub_color}">{time_str}</text>\n'
+    # X-axis labels
+    for t in ticks:
+        x = x_pos(t)
+        svg += f'    <text x="{x:.1f}" y="{chart_height + 18}" text-anchor="middle" '
+        svg += f'font-family="{font}" font-size="11px" fill="{text_color}">'
+        svg += f'{format_time(t)}</text>\n'
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}">
-  <rect width="{width}" height="{height}" rx="8" fill="{bg}" stroke="{border}" stroke-width="1"/>
-  <text x="{width / 2}" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="15" font-weight="600" fill="{text_color}" text-anchor="middle">Validating cross-references in {PROJECT} ({FILES})</text>
-  <text x="{width / 2}" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="12" fill="{sub_color}" text-anchor="middle">{SPEEDUP}</text>
-{bars_svg}</svg>
-"""
+    svg += "  </g>\n"
+
+    # Caption
+    svg += f'  <text x="{width / 2}" y="{total_height - 2}" text-anchor="middle" '
+    svg += f'font-family="{font}" font-size="11px" fill="{text_color}" opacity="0.6">'
+    svg += f'{CAPTION}</text>\n'
+
+    svg += "</svg>\n"
+    return svg
 
 
 if __name__ == "__main__":
