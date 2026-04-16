@@ -36,13 +36,13 @@ pub fn discover_modules(src_dirs: &[PathBuf], exclude: &[String]) -> Vec<Discove
 
         for entry in builder.build().flatten() {
             let path = entry.path();
-            if path.extension().is_some_and(|e| e == "py") {
-                if let Some(dotted) = path_to_dotted(path, src_dir) {
-                    modules.push(DiscoveredModule {
-                        file_path: path.to_path_buf(),
-                        dotted_path: dotted,
-                    });
-                }
+            if path.extension().is_some_and(|e| e == "py")
+                && let Some(dotted) = path_to_dotted(path, src_dir)
+            {
+                modules.push(DiscoveredModule {
+                    file_path: path.to_path_buf(),
+                    dotted_path: dotted,
+                });
             }
         }
     }

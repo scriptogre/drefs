@@ -12,6 +12,20 @@ pub fn has_docstrings(source: &[u8]) -> bool {
     source.windows(3).any(|w| w == b"\"\"\"" || w == b"'''")
 }
 
+/// Check if source bytes contain multi-line parenthesized imports that
+/// fast_scan can't handle (e.g. `from pkg import (\n    Foo,\n    Bar\n)`).
+pub fn has_multiline_imports(source: &[u8]) -> bool {
+    for line in source.split(|&b| b == b'\n') {
+        if (line.starts_with(b"from ") || line.starts_with(b"import "))
+            && line.contains(&b'(')
+            && !line.contains(&b')')
+        {
+            return true;
+        }
+    }
+    false
+}
+
 /// Fast-scan a Python file to extract imports and top-level definitions.
 /// Does NOT extract docstrings, class members, bases, or attributes.
 pub fn fast_scan(source: &[u8], file_path: &Path, dotted_path: &str) -> Module {
@@ -23,6 +37,7 @@ pub fn fast_scan(source: &[u8], file_path: &Path, dotted_path: &str) -> Module {
         is_package,
         definitions: HashMap::new(),
         imports: Vec::new(),
+        wildcard_imports: Vec::new(),
         all: None,
         docstrings: Vec::new(),
     };
@@ -45,42 +60,20 @@ pub fn fast_scan(source: &[u8], file_path: &Path, dotted_path: &str) -> Module {
             scan_import(trimmed, &mut module);
         } else if trimmed.starts_with(b"class ") {
             if let Some(name) = extract_def_name(trimmed, b"class ") {
-                module.definitions.insert(
-                    name.clone(),
-                    Symbol {
-                        name,
-                        kind: SymbolKind::Class,
-                        members: HashMap::new(),
-                        bases: vec![],
-                        location: None,
-                    },
-                );
+                module
+                    .definitions
+                    .insert(name.clone(), Symbol::new(name, SymbolKind::Class));
             }
-        } else if trimmed.starts_with(b"def ") {
-            if let Some(name) = extract_def_name(trimmed, b"def ") {
-                module.definitions.insert(
-                    name.clone(),
-                    Symbol {
-                        name,
-                        kind: SymbolKind::Function,
-                        members: HashMap::new(),
-                        bases: vec![],
-                        location: None,
-                    },
-                );
-            }
-        } else if trimmed.starts_with(b"async def ") {
-            if let Some(name) = extract_def_name(trimmed, b"async def ") {
-                module.definitions.insert(
-                    name.clone(),
-                    Symbol {
-                        name,
-                        kind: SymbolKind::Function,
-                        members: HashMap::new(),
-                        bases: vec![],
-                        location: None,
-                    },
-                );
+        } else if trimmed.starts_with(b"def ") || trimmed.starts_with(b"async def ") {
+            let prefix = if trimmed.starts_with(b"async def ") {
+                b"async def " as &[u8]
+            } else {
+                b"def "
+            };
+            if let Some(name) = extract_def_name(trimmed, prefix) {
+                module
+                    .definitions
+                    .insert(name.clone(), Symbol::new(name, SymbolKind::Function));
             }
         }
     }
@@ -126,7 +119,7 @@ fn scan_from_import(line: &[u8], module: &mut Module) {
 
     // Resolve relative imports.
     let source_path = if source_raw.starts_with('.') {
-        crate::parse::resolve_relative_import(&module.path, source_raw, module.is_package)
+        crate::util::resolve_relative_import(&module.path, source_raw, module.is_package)
     } else {
         source_raw.to_string()
     };
@@ -214,6 +207,3 @@ fn scan_import(line: &[u8], module: &mut Module) {
         }
     }
 }
-
-// Make resolve_relative_import accessible from fast_scan.
-// It's defined in parse.rs and we call it through crate::parse::.

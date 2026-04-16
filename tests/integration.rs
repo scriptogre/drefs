@@ -200,6 +200,89 @@ fn native_syntax_error_count() {
 }
 
 // ---------------------------------------------------------------------------
+// Wildcard imports (from pkg.models import *)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn wildcard_imports_direct_paths_work() {
+    let (stdout, _stderr, _code) = run_doxr("wildcard_imports");
+    let errors = extract_unresolved(&stdout);
+
+    // Direct paths should always work regardless of wildcard support.
+    let must_resolve = vec![
+        "pkg.models.User",
+        "pkg.models.Admin",
+        "pkg.helpers.helper_func",
+    ];
+
+    for valid in &must_resolve {
+        assert!(
+            !errors.contains(&valid.to_string()),
+            "False positive: `{valid}` was flagged.\nAll errors: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn wildcard_imports_through_init() {
+    let (stdout, _stderr, _code) = run_doxr("wildcard_imports");
+    let errors = extract_unresolved(&stdout);
+
+    // These go through __init__.py's `from pkg.models import *`
+    // and `from pkg.helpers import *`.
+    let must_resolve = vec![
+        "pkg.User",
+        "pkg.Admin",
+        "pkg.helper_func",
+        "pkg.another_helper",
+    ];
+
+    for valid in &must_resolve {
+        assert!(
+            !errors.contains(&valid.to_string()),
+            "False positive: `{valid}` was flagged.\nAll errors: {errors:?}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Multi-line parenthesized imports (fast_scan path)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn multiline_imports_through_init() {
+    let (stdout, _stderr, _code) = run_doxr("multiline_imports");
+    let errors = extract_unresolved(&stdout);
+
+    // __init__.py has no docstrings, so it goes through fast_scan.
+    // Multi-line parenthesized imports should still be captured.
+    let must_resolve = vec!["pkg.User", "pkg.Admin", "pkg.helper_func"];
+
+    for valid in &must_resolve {
+        assert!(
+            !errors.contains(&valid.to_string()),
+            "False positive: `{valid}` was flagged.\nAll errors: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn multiline_imports_direct_paths_work() {
+    let (stdout, _stderr, _code) = run_doxr("multiline_imports");
+    let errors = extract_unresolved(&stdout);
+
+    // Direct paths should always work.
+    let must_resolve = vec!["pkg.models.User", "pkg.models.Admin"];
+
+    for valid in &must_resolve {
+        assert!(
+            !errors.contains(&valid.to_string()),
+            "False positive: `{valid}` was flagged.\nAll errors: {errors:?}"
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Decorated classes, subscript bases, relative __init__.py imports
 // ---------------------------------------------------------------------------
 

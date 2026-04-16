@@ -5,9 +5,9 @@ mod extract;
 mod fast_scan;
 mod graph;
 mod inventory;
-mod lsp;
 mod parse;
 mod patterns;
+mod util;
 
 use anyhow::Result;
 use clap::{Parser as ClapParser, Subcommand};
@@ -22,9 +22,6 @@ use std::process;
     about = "A hyper-fast Python docstring cross-reference checker"
 )]
 struct Cli {
-    #[command(subcommand)]
-    command: Option<Command>,
-
     /// Project root directory to check (default: current directory).
     #[arg(default_value = ".")]
     path: PathBuf,
@@ -46,18 +43,8 @@ struct Cli {
     inventories: Vec<String>,
 }
 
-#[derive(Subcommand)]
-enum Command {
-    /// Start the LSP server (stdio transport).
-    Lsp,
-}
-
 fn main() -> Result<()> {
     let cli = Cli::parse();
-
-    if let Some(Command::Lsp) = cli.command {
-        return lsp::run();
-    }
 
     let project_root = cli.path.canonicalize().unwrap_or(cli.path.clone());
 
@@ -94,17 +81,18 @@ fn main() -> Result<()> {
     }
 
     // 2. Read all files in parallel, then parse.
-    //    Files without docstrings (no `"""`) use fast line-based scanning
-    //    instead of tree-sitter, which is ~10x cheaper per file.
+    //    Files without docstrings (no `"""`) and without multi-line imports
+    //    use fast line-based scanning instead of tree-sitter.
     let parsed: Vec<_> = discovered
         .par_iter()
         .filter_map(|dm| {
             let content = std::fs::read(&dm.file_path).ok()?;
             let file_str = dm.file_path.display().to_string();
 
-            if fast_scan::has_docstrings(&content) {
-                // Full tree-sitter parse: extracts class members, bases,
-                // docstrings, self.x attributes, etc.
+            let needs_tree_sitter =
+                fast_scan::has_docstrings(&content) || fast_scan::has_multiline_imports(&content);
+
+            if needs_tree_sitter {
                 match parse::parse_bytes(&content, &dm.file_path, &dm.dotted_path) {
                     Ok(module) => Some((file_str, module)),
                     Err(e) => {
@@ -129,6 +117,10 @@ fn main() -> Result<()> {
         file_map.push((module.path.clone(), file_path));
         symbol_graph.add_module(module);
     }
+
+    // Expand `from X import *` into concrete imports.
+    symbol_graph.expand_wildcards();
+    symbol_graph.compute_roots();
 
     // 3. Load external inventories.
     let mut inv = inventory::Inventory::new();

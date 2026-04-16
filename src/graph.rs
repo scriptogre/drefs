@@ -3,7 +3,7 @@
 /// The graph is built by parsing every `.py` file in the project and extracting
 /// definitions (classes, functions, attributes) and imports. References found in
 /// docstrings are later validated against this graph.
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 // ---------------------------------------------------------------------------
 // Core types
@@ -13,11 +13,11 @@ use std::collections::HashMap;
 pub type DottedPath = String;
 
 /// The kind of symbol defined in Python source.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub enum SymbolKind {
-    Module,
-    Class,
+    #[default]
     Function,
+    Class,
     Attribute,
 }
 
@@ -30,16 +30,27 @@ pub struct SourceLocation {
 }
 
 /// A single Python symbol (class, function, variable, …).
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Symbol {
     pub name: String,
     pub kind: SymbolKind,
-    /// Nested members – e.g. methods inside a class.
+    /// Nested members -- e.g. methods inside a class.
     pub members: HashMap<String, Symbol>,
     /// Base class names (for classes only), as written in the source.
     pub bases: Vec<String>,
     /// Where this symbol is defined.
     pub location: Option<SourceLocation>,
+}
+
+impl Symbol {
+    /// Create a new symbol with the given name and kind, defaulting everything else.
+    pub fn new(name: String, kind: SymbolKind) -> Self {
+        Self {
+            name,
+            kind,
+            ..Default::default()
+        }
+    }
 }
 
 /// A recorded `import` / `from … import …` statement.
@@ -74,6 +85,8 @@ pub struct Module {
     pub definitions: HashMap<String, Symbol>,
     /// Import statements.
     pub imports: Vec<Import>,
+    /// Source modules of `from X import *` statements.
+    pub wildcard_imports: Vec<DottedPath>,
     /// `__all__` if defined (explicit public API).
     pub all: Option<Vec<String>>,
     /// Docstrings found in this module (module-level + all nested).
@@ -88,6 +101,9 @@ pub struct Module {
 #[derive(Debug, Default)]
 pub struct SymbolGraph {
     pub modules: HashMap<DottedPath, Module>,
+    /// Precomputed set of root package names (e.g. `{"pkg", "my_lib"}`).
+    /// Built by [`SymbolGraph::compute_roots`].
+    root_packages: HashSet<String>,
 }
 
 impl SymbolGraph {
@@ -98,6 +114,81 @@ impl SymbolGraph {
     /// Insert a parsed module into the graph.
     pub fn add_module(&mut self, module: Module) {
         self.modules.insert(module.path.clone(), module);
+    }
+
+    /// Precompute the set of root package names from all modules.
+    /// Call after all modules are added and wildcards are expanded.
+    pub fn compute_roots(&mut self) {
+        self.root_packages = self
+            .modules
+            .keys()
+            .filter_map(|path| path.split('.').next().map(String::from))
+            .collect();
+    }
+
+    /// Check if a dotted reference's root module is part of this project.
+    pub fn is_internal(&self, target: &str) -> bool {
+        let root = target.split('.').next().unwrap_or("");
+        self.root_packages.contains(root)
+    }
+
+    /// Expand `from X import *` statements by copying exported symbols
+    /// from the source module into the importing module's imports.
+    ///
+    /// If the source module defines `__all__`, only those names are exported.
+    /// Otherwise, all names not starting with `_` are exported.
+    pub fn expand_wildcards(&mut self) {
+        // Collect the work to do: (importing_module_path, source_module_path).
+        let work: Vec<(String, String)> = self
+            .modules
+            .values()
+            .flat_map(|m| {
+                m.wildcard_imports
+                    .iter()
+                    .map(move |src| (m.path.clone(), src.clone()))
+            })
+            .collect();
+
+        for (importer_path, source_path) in work {
+            // Look up the source module and collect names to export.
+            let exported: Vec<(String, String)> = match self.modules.get(&source_path) {
+                Some(source) => {
+                    if let Some(ref all) = source.all {
+                        // __all__ defined: export only those names.
+                        all.iter()
+                            .map(|name| (source_path.clone(), name.clone()))
+                            .collect()
+                    } else {
+                        // No __all__: export all public definitions (no leading _).
+                        source
+                            .definitions
+                            .keys()
+                            .filter(|name| !name.starts_with('_'))
+                            .map(|name| (source_path.clone(), name.clone()))
+                            .collect()
+                    }
+                }
+                None => continue,
+            };
+
+            // Add synthetic imports to the importing module.
+            if let Some(importer) = self.modules.get_mut(&importer_path) {
+                for (source, name) in exported {
+                    // Don't duplicate if already explicitly imported.
+                    let already_imported = importer
+                        .imports
+                        .iter()
+                        .any(|imp| imp.source == source && imp.name == name);
+                    if !already_imported {
+                        importer.imports.push(Import {
+                            source,
+                            name,
+                            alias: None,
+                        });
+                    }
+                }
+            }
+        }
     }
 
     /// Resolve a dotted reference like `my_pkg.foo.Bar` to a [`Symbol`].
@@ -134,18 +225,17 @@ impl SymbolGraph {
                 }
                 // If the first remaining segment is a class and the second
                 // segment doesn't resolve, try base class inheritance.
-                if remaining.len() >= 2 {
-                    if let Some(sym) = module.definitions.get(remaining[0]) {
-                        if sym.kind == SymbolKind::Class {
-                            let class_fqn = format!("{}.{}", module_path, remaining[0]);
-                            // Try resolving each remaining member via bases.
-                            if self.resolve_via_bases(&class_fqn, remaining[1], depth + 1) {
-                                // If there are more segments (method on inherited class),
-                                // we only handle one level of member lookup for now.
-                                if remaining.len() == 2 {
-                                    return true;
-                                }
-                            }
+                if remaining.len() >= 2
+                    && let Some(sym) = module.definitions.get(remaining[0])
+                    && sym.kind == SymbolKind::Class
+                {
+                    let class_fqn = format!("{}.{}", module_path, remaining[0]);
+                    // Try resolving each remaining member via bases.
+                    if self.resolve_via_bases(&class_fqn, remaining[1], depth + 1) {
+                        // If there are more segments (method on inherited class),
+                        // we only handle one level of member lookup for now.
+                        if remaining.len() == 2 {
+                            return true;
                         }
                     }
                 }
@@ -191,10 +281,10 @@ impl SymbolGraph {
             let module_path = segments[..split].join(".");
             if let Some(module) = self.modules.get(&module_path) {
                 let class_name = segments[split];
-                if let Some(sym) = module.definitions.get(class_name) {
-                    if sym.kind == SymbolKind::Class {
-                        return Some(sym);
-                    }
+                if let Some(sym) = module.definitions.get(class_name)
+                    && sym.kind == SymbolKind::Class
+                {
+                    return Some(sym);
                 }
                 // Also check via imports.
                 for imp in &module.imports {
@@ -229,10 +319,10 @@ impl SymbolGraph {
                         let base_fqn = self.resolve_class_name(&base, module);
                         if let Some(base_fqn) = base_fqn {
                             // Check if the base class has this member.
-                            if let Some(base_sym) = self.find_class(&base_fqn) {
-                                if base_sym.members.contains_key(member) {
-                                    return true;
-                                }
+                            if let Some(base_sym) = self.find_class(&base_fqn)
+                                && base_sym.members.contains_key(member)
+                            {
+                                return true;
                             }
                             // Recurse up the hierarchy.
                             if self.resolve_via_bases(&base_fqn, member, depth + 1) {

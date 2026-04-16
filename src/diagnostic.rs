@@ -68,7 +68,7 @@ pub fn check(
                     ReferenceKind::FullyQualified => (r.target.clone(), false),
                 };
 
-                let internal = is_internal(&target, graph);
+                let internal = graph.is_internal(&target);
 
                 if internal {
                     // Internal ref: must resolve in our symbol graph.
@@ -123,15 +123,6 @@ fn is_explicitly_skipped(reference: &Reference, config: &DoxrConfig) -> bool {
         let km_root = km.split('.').next().unwrap_or("");
         root == km_root
     })
-}
-
-/// Check if a target's root module is part of the project we're checking.
-fn is_internal(target: &str, graph: &SymbolGraph) -> bool {
-    let root = target.split('.').next().unwrap_or("");
-    graph
-        .modules
-        .keys()
-        .any(|path| path == root || path.starts_with(&format!("{root}.")))
 }
 
 /// Expand a short name (e.g. `User`) to a fully-qualified path using the

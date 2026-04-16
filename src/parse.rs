@@ -49,6 +49,7 @@ pub fn parse_bytes(source: &[u8], file_path: &Path, dotted_path: &str) -> Result
         is_package,
         definitions: HashMap::new(),
         imports: Vec::new(),
+        wildcard_imports: Vec::new(),
         all: None,
         docstrings: Vec::new(),
     };
@@ -174,10 +175,10 @@ fn extract_bases(node: Node, src: &[u8]) -> Vec<String> {
             }
             // Handle Generic[T], ABC[T], BaseClass[Param] — extract the base name.
             "subscript" => {
-                if let Some(value) = child.child_by_field_name("value") {
-                    if let Ok(text) = value.utf8_text(src) {
-                        bases.push(text.to_string());
-                    }
+                if let Some(value) = child.child_by_field_name("value")
+                    && let Ok(text) = value.utf8_text(src)
+                {
+                    bases.push(text.to_string());
                 }
             }
             _ => {}
@@ -198,20 +199,16 @@ fn extract_function(node: Node, src: &[u8], module: &mut Module) -> Option<Symbo
     let name_text = name.utf8_text(src).ok()?.to_string();
 
     // Extract function docstring (first expression statement in body).
-    if let Some(body) = func_node.child_by_field_name("body") {
-        if let Some(first) = body.child(0) {
-            if let Some(ds) = try_extract_docstring(first, src) {
-                module.docstrings.push(ds);
-            }
-        }
+    if let Some(body) = func_node.child_by_field_name("body")
+        && let Some(first) = body.child(0)
+        && let Some(ds) = try_extract_docstring(first, src)
+    {
+        module.docstrings.push(ds);
     }
 
     Some(Symbol {
-        name: name_text,
-        kind: SymbolKind::Function,
-        members: HashMap::new(),
-        bases: vec![],
         location: Some(node_location(name, &module.file_path)),
+        ..Symbol::new(name_text, SymbolKind::Function)
     })
 }
 
@@ -226,33 +223,15 @@ fn extract_attribute(node: Node, src: &[u8], defs: &mut HashMap<String, Symbol>)
                 let Some(name) = left.utf8_text(src).ok().map(String::from) else {
                     return;
                 };
-                defs.insert(
-                    name.clone(),
-                    Symbol {
-                        name,
-                        kind: SymbolKind::Attribute,
-                        members: HashMap::new(),
-                        bases: vec![],
-                        location: None,
-                    },
-                );
+                defs.insert(name.clone(), Symbol::new(name, SymbolKind::Attribute));
             }
         }
         "type_alias_statement" => {
-            if let Some(name_node) = child.child_by_field_name("name") {
-                if let Ok(name) = name_node.utf8_text(src) {
-                    let name = name.to_string();
-                    defs.insert(
-                        name.clone(),
-                        Symbol {
-                            name,
-                            kind: SymbolKind::Attribute,
-                            members: HashMap::new(),
-                            bases: vec![],
-                            location: None,
-                        },
-                    );
-                }
+            if let Some(name_node) = child.child_by_field_name("name")
+                && let Ok(name) = name_node.utf8_text(src)
+            {
+                let name = name.to_string();
+                defs.insert(name.clone(), Symbol::new(name, SymbolKind::Attribute));
             }
         }
         _ => {}
@@ -274,30 +253,21 @@ fn walk_for_self_attrs(node: Node, src: &[u8], members: &mut HashMap<String, Sym
         match child.kind() {
             "expression_statement" => {
                 // Look for `self.X = ...`
-                if let Some(assign) = child.child(0) {
-                    if assign.kind() == "assignment" {
-                        if let Some(left) = assign.child_by_field_name("left") {
-                            if left.kind() == "attribute" {
-                                if let (Some(obj), Some(attr)) = (
-                                    left.child_by_field_name("object"),
-                                    left.child_by_field_name("attribute"),
-                                ) {
-                                    if obj.utf8_text(src).ok() == Some("self") {
-                                        if let Ok(attr_name) = attr.utf8_text(src) {
-                                            let name = attr_name.to_string();
-                                            members.entry(name.clone()).or_insert(Symbol {
-                                                name,
-                                                kind: SymbolKind::Attribute,
-                                                members: HashMap::new(),
-                                                bases: vec![],
-                                                location: None,
-                                            });
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                if let Some(assign) = child.child(0)
+                    && assign.kind() == "assignment"
+                    && let Some(left) = assign.child_by_field_name("left")
+                    && left.kind() == "attribute"
+                    && let (Some(obj), Some(attr)) = (
+                        left.child_by_field_name("object"),
+                        left.child_by_field_name("attribute"),
+                    )
+                    && obj.utf8_text(src).ok() == Some("self")
+                    && let Ok(attr_name) = attr.utf8_text(src)
+                {
+                    let name = attr_name.to_string();
+                    members
+                        .entry(name.clone())
+                        .or_insert_with(|| Symbol::new(name, SymbolKind::Attribute));
                 }
             }
             // Recurse into if/else/try blocks inside __init__.
@@ -364,15 +334,18 @@ fn extract_from_import(node: Node, src: &[u8], module: &mut Module) {
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         // Skip the module_name node (already handled above).
-        if let Some(ref mn) = module_name_node {
-            if child.id() == mn.id() {
-                continue;
-            }
+        if let Some(ref mn) = module_name_node
+            && child.id() == mn.id()
+        {
+            continue;
         }
-        if child.kind() == "dotted_name" || child.kind() == "aliased_import" {
-            if let Some(imp) = parse_import_name(child, src, &source_path) {
-                module.imports.push(imp);
-            }
+        if child.kind() == "wildcard_import" {
+            // `from X import *` — record for later expansion.
+            module.wildcard_imports.push(source_path.clone());
+        } else if (child.kind() == "dotted_name" || child.kind() == "aliased_import")
+            && let Some(imp) = parse_import_name(child, src, &source_path)
+        {
+            module.imports.push(imp);
         }
     }
 }
@@ -452,33 +425,7 @@ fn parse_import_name(node: Node, src: &[u8], source_path: &str) -> Option<Import
     }
 }
 
-/// Resolve a relative import like `.foo` or `..bar` against the current module path.
-///
-/// For `__init__.py` modules (packages), `.foo` means "submodule foo of this package".
-/// For regular modules, `.foo` means "sibling module foo".
-pub fn resolve_relative_import(current_module: &str, relative: &str, is_package: bool) -> String {
-    let dots = relative.chars().take_while(|c| *c == '.').count();
-    let remainder = &relative[dots..];
-
-    let parts: Vec<&str> = current_module.split('.').collect();
-
-    // For __init__.py, the module path IS the package, so 1 dot = this package.
-    // For regular modules, 1 dot = parent package (go up 1 from the module).
-    let effective_dots = if is_package { dots - 1 } else { dots };
-    let up = effective_dots.min(parts.len());
-    let base: Vec<&str> = parts[..parts.len() - up].to_vec();
-
-    if remainder.is_empty() {
-        base.join(".")
-    } else {
-        let mut result = base.join(".");
-        if !result.is_empty() {
-            result.push('.');
-        }
-        result.push_str(remainder);
-        result
-    }
-}
+use crate::util::resolve_relative_import;
 
 // ---------------------------------------------------------------------------
 // Docstring / __all__ extraction
@@ -523,10 +470,11 @@ fn handle_expression_statement(node: Node, src: &[u8], module: &mut Module) {
             Some(l) => l,
             None => return,
         };
-        if left.kind() == "identifier" && left.utf8_text(src).ok() == Some("__all__") {
-            if let Some(right) = child.child_by_field_name("right") {
-                module.all = Some(extract_all_list(right, src));
-            }
+        if left.kind() == "identifier"
+            && left.utf8_text(src).ok() == Some("__all__")
+            && let Some(right) = child.child_by_field_name("right")
+        {
+            module.all = Some(extract_all_list(right, src));
         }
         // Also register as an attribute definition.
         extract_attribute(node, src, &mut module.definitions);
@@ -541,14 +489,14 @@ fn extract_all_list(node: Node, src: &[u8]) -> Vec<String> {
     }
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
-        if child.kind() == "string" {
-            if let Ok(text) = child.utf8_text(src) {
-                // Strip quotes.
-                let stripped = text
-                    .trim_start_matches(['\'', '"'])
-                    .trim_end_matches(['\'', '"']);
-                names.push(stripped.to_string());
-            }
+        if child.kind() == "string"
+            && let Ok(text) = child.utf8_text(src)
+        {
+            // Strip quotes.
+            let stripped = text
+                .trim_start_matches(['\'', '"'])
+                .trim_end_matches(['\'', '"']);
+            names.push(stripped.to_string());
         }
     }
     names
