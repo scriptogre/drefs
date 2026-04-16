@@ -1,4 +1,4 @@
-/// Configuration loaded from `pyproject.toml` under `[tool.doxr]`.
+/// Configuration loaded from `pyproject.toml` under `[tool.drefs]`.
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::path::{Path, PathBuf};
@@ -14,7 +14,7 @@ pub enum DocStyle {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
-pub struct DoxrConfig {
+pub struct DrefsConfig {
     /// Source directories to scan (e.g. `["src/my_package"]`).
     #[serde(default)]
     pub src: Vec<PathBuf>,
@@ -37,7 +37,7 @@ pub struct DoxrConfig {
     pub inventories: Vec<String>,
 }
 
-/// Wrapper to deserialize `[tool.doxr]` from pyproject.toml.
+/// Wrapper to deserialize `[tool.drefs]` from pyproject.toml.
 #[derive(Debug, Deserialize)]
 struct PyProject {
     tool: Option<ToolTable>,
@@ -45,12 +45,12 @@ struct PyProject {
 
 #[derive(Debug, Deserialize)]
 struct ToolTable {
-    doxr: Option<DoxrConfig>,
+    drefs: Option<DrefsConfig>,
 }
 
-impl DoxrConfig {
+impl DrefsConfig {
     /// Load config from `pyproject.toml` in the given directory.
-    /// Returns default config if the file doesn't exist or has no `[tool.doxr]`.
+    /// Returns default config if the file doesn't exist or has no `[tool.drefs]`.
     pub fn load(project_root: &Path) -> Result<Self> {
         let pyproject_path = project_root.join("pyproject.toml");
 
@@ -64,7 +64,7 @@ impl DoxrConfig {
         let pyproject: PyProject = toml::from_str(&content)
             .with_context(|| format!("Failed to parse {}", pyproject_path.display()))?;
 
-        Ok(pyproject.tool.and_then(|t| t.doxr).unwrap_or_default())
+        Ok(pyproject.tool.and_then(|t| t.drefs).unwrap_or_default())
     }
 
     /// Return effective source directories, auto-detecting if not configured.

@@ -25,13 +25,6 @@ fn node_location(node: Node, file_path: &str) -> SourceLocation {
     }
 }
 
-/// Parse a single `.py` file and return a [`Module`].
-pub fn parse_file(file_path: &Path, dotted_path: &str) -> Result<Module> {
-    let source = std::fs::read(file_path)
-        .with_context(|| format!("Failed to read {}", file_path.display()))?;
-    parse_bytes(&source, file_path, dotted_path)
-}
-
 /// Parse Python source bytes and return a [`Module`].
 pub fn parse_bytes(source: &[u8], file_path: &Path, dotted_path: &str) -> Result<Module> {
     let is_package = file_path.file_name().is_some_and(|f| f == "__init__.py");

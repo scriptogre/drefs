@@ -4,3 +4,5 @@ __pycache__/
 editors/pycharm/build/
 editors/pycharm/.gradle/
 editors/pycharm/.intellijPlatform/
+editors/pycharm/.kotlin/
+docs/superpowers/

@@ -1,5 +1,5 @@
 [package]
-name = "doxr"
+name = "drefs"
 version = "0.1.0"
 edition = "2024"
 description = "A hyper-fast Python docstring cross-reference checker"

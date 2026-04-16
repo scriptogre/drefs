@@ -1,2 +1,2 @@
-[tool.doxr]
+[tool.drefs]
 src = ["src"]

@@ -1,4 +1,4 @@
-package com.doxr.intellij
+package com.drefs.intellij
 
 import com.intellij.patterns.PlatformPatterns
 import com.intellij.psi.*
@@ -10,11 +10,11 @@ import com.jetbrains.python.psi.PyStringLiteralExpression
  * Detects cross-reference patterns and makes each dotted path segment
  * Ctrl+Clickable, with squiggles on unresolved segments.
  */
-class DoxrReferenceContributor : PsiReferenceContributor() {
+class DrefsReferenceContributor : PsiReferenceContributor() {
     override fun registerReferenceProviders(registrar: PsiReferenceRegistrar) {
         registrar.registerReferenceProvider(
             PlatformPatterns.psiElement(PyStringLiteralExpression::class.java),
-            DoxrReferenceProvider()
+            DrefsReferenceProvider()
         )
     }
 }

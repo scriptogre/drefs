@@ -7,7 +7,7 @@
 set -euo pipefail
 
 RUST_FILE="src/patterns.rs"
-KOTLIN_FILE="editors/pycharm/src/main/kotlin/com/doxr/intellij/DoxrPatterns.kt"
+KOTLIN_FILE="editors/pycharm/src/main/kotlin/com/drefs/intellij/DrefsPatterns.kt"
 
 errors=0
 
@@ -39,7 +39,7 @@ if [ "$rust_patterns" != "$kotlin_patterns" ]; then
     echo "--- Rust (src/patterns.rs) ---"
     echo "$rust_patterns"
     echo ""
-    echo "--- Kotlin (DoxrPatterns.kt) ---"
+    echo "--- Kotlin (DrefsPatterns.kt) ---"
     echo "$kotlin_patterns"
     echo ""
     diff <(echo "$rust_patterns") <(echo "$kotlin_patterns") || true
@@ -59,7 +59,7 @@ fi
 
 if [ "$errors" -gt 0 ]; then
     echo ""
-    echo "Fix: update both src/patterns.rs and DoxrPatterns.kt to match."
+    echo "Fix: update both src/patterns.rs and DrefsPatterns.kt to match."
     exit 1
 fi
 

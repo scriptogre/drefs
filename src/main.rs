@@ -10,14 +10,14 @@ mod patterns;
 mod util;
 
 use anyhow::Result;
-use clap::{Parser as ClapParser, Subcommand};
+use clap::Parser as ClapParser;
 use rayon::prelude::*;
 use std::path::PathBuf;
 use std::process;
 
 #[derive(ClapParser)]
 #[command(
-    name = "doxr",
+    name = "drefs",
     version,
     about = "A hyper-fast Python docstring cross-reference checker"
 )]
@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     let project_root = cli.path.canonicalize().unwrap_or(cli.path.clone());
 
     // Load config from pyproject.toml, then apply CLI overrides.
-    let mut config = config::DoxrConfig::load(&project_root)?;
+    let mut config = config::DrefsConfig::load(&project_root)?;
 
     if !cli.src.is_empty() {
         config.src = cli.src;

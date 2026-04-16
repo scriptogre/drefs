@@ -1,4 +1,4 @@
-package com.doxr.intellij
+package com.drefs.intellij
 
 import com.intellij.lang.annotation.AnnotationHolder
 import com.intellij.lang.annotation.Annotator
@@ -13,7 +13,7 @@ import java.util.regex.Pattern
  * Highlights cross-reference dotted paths inside docstrings to look like
  * code identifiers rather than plain docstring text.
  */
-class DoxrAnnotator : Annotator {
+class DrefsAnnotator : Annotator {
 
     override fun annotate(element: PsiElement, holder: AnnotationHolder) {
         val stringLiteral = element as? PyStringLiteralExpression ?: return
@@ -27,13 +27,13 @@ class DoxrAnnotator : Annotator {
         // Track offsets from MkDocs/Sphinx patterns for dedup.
         val existingOffsets = mutableSetOf<Int>()
 
-        collectOffsets(DoxrPatterns.MKDOCS_EXPLICIT, content, 1, existingOffsets)
-        collectOffsets(DoxrPatterns.MKDOCS_AUTOREF, content, 1, existingOffsets)
-        collectOffsets(DoxrPatterns.SPHINX_XREF, content, 2, existingOffsets)
+        collectOffsets(DrefsPatterns.MKDOCS_EXPLICIT, content, 1, existingOffsets)
+        collectOffsets(DrefsPatterns.MKDOCS_AUTOREF, content, 1, existingOffsets)
+        collectOffsets(DrefsPatterns.SPHINX_XREF, content, 2, existingOffsets)
 
-        highlightRefs(DoxrPatterns.MKDOCS_EXPLICIT, content, 1, contentOffset, elementOffset, holder)
-        highlightRefs(DoxrPatterns.MKDOCS_AUTOREF, content, 1, contentOffset, elementOffset, holder)
-        highlightRefs(DoxrPatterns.SPHINX_XREF, content, 2, contentOffset, elementOffset, holder)
+        highlightRefs(DrefsPatterns.MKDOCS_EXPLICIT, content, 1, contentOffset, elementOffset, holder)
+        highlightRefs(DrefsPatterns.MKDOCS_AUTOREF, content, 1, contentOffset, elementOffset, holder)
+        highlightRefs(DrefsPatterns.SPHINX_XREF, content, 2, contentOffset, elementOffset, holder)
 
         highlightRustStyleRefs(content, contentOffset, elementOffset, existingOffsets, holder)
     }
@@ -49,7 +49,7 @@ class DoxrAnnotator : Annotator {
             var path = matcher.group(group) ?: continue
             val tildeOffset = if (path.startsWith("~")) 1 else 0
             if (tildeOffset > 0) path = path.substring(1)
-            if (!DoxrPatterns.isFullyQualified(path)) continue
+            if (!DrefsPatterns.isFullyQualified(path)) continue
             out.add(matcher.start(group) + tildeOffset)
         }
     }
@@ -67,7 +67,7 @@ class DoxrAnnotator : Annotator {
             var path = matcher.group(group) ?: continue
             val tildeOffset = if (path.startsWith("~")) 1 else 0
             if (tildeOffset > 0) path = path.substring(1)
-            if (!DoxrPatterns.isFullyQualified(path)) continue
+            if (!DrefsPatterns.isFullyQualified(path)) continue
 
             val pathStart = matcher.start(group) + tildeOffset
             highlightDottedPath(path, pathStart, contentOffset, elementOffset, holder)
@@ -81,12 +81,12 @@ class DoxrAnnotator : Annotator {
         existingOffsets: Set<Int>,
         holder: AnnotationHolder,
     ) {
-        val matcher = DoxrPatterns.RUST_STYLE.matcher(content)
+        val matcher = DrefsPatterns.RUST_STYLE.matcher(content)
         while (matcher.find()) {
             val start = matcher.start()
             val end = matcher.end()
 
-            if (DoxrPatterns.shouldSkipRustStyle(content, start, end)) continue
+            if (DrefsPatterns.shouldSkipRustStyle(content, start, end)) continue
 
             val path = matcher.group(1) ?: continue
             val pathStart = matcher.start(1)
@@ -94,7 +94,7 @@ class DoxrAnnotator : Annotator {
             if (existingOffsets.contains(pathStart)) continue
 
             if (path.contains('.')) {
-                if (!DoxrPatterns.isFullyQualified(path)) continue
+                if (!DrefsPatterns.isFullyQualified(path)) continue
                 highlightDottedPath(path, pathStart, contentOffset, elementOffset, holder)
             } else {
                 // Short name — single identifier highlight.

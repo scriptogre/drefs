@@ -1,1 +1,1 @@
-rootProject.name = "doxr-pycharm"
+rootProject.name = "drefs-pycharm"

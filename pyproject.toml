@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "doxr"
+name = "drefs"
 version = "0.1.0"
 description = "A hyper-fast Python docstring cross-reference checker"
 readme = "README.md"
@@ -29,6 +29,6 @@ Changelog = "https://github.com/scriptogre/doxr/blob/main/CHANGELOG.md"
 bindings = "bin"
 strip = true
 
-[tool.doxr]
-# doxr eats its own dogfood
+[tool.drefs]
+# drefs eats its own dogfood
 src = ["tests/fixtures"]

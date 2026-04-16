@@ -1,8 +1,8 @@
 # Benchmarks
 
-Benchmarks comparing doxr against `mkdocs build --strict` for validating cross-references.
+Benchmarks comparing drefs against `mkdocs build --strict` for validating cross-references.
 
-doxr checks cross-references only. `mkdocs build --strict` renders the entire documentation site (Markdown processing, HTML generation, search index, etc.), which includes cross-reference validation as a side effect.
+drefs checks cross-references only. `mkdocs build --strict` renders the entire documentation site (Markdown processing, HTML generation, search index, etc.), which includes cross-reference validation as a side effect.
 
 ## Setup
 
@@ -19,7 +19,7 @@ Validating cross-references in [tinygrad/tinygrad](https://github.com/tinygrad/t
 
 | Command | Mean | Min | Max |
 |:---|---:|---:|---:|
-| `doxr .` | 110 ms | 98 ms | 125 ms |
+| `drefs .` | 110 ms | 98 ms | 125 ms |
 | `mkdocs build --strict` | 51.0 s | 48.3 s | 52.5 s |
 
 **~460x faster.**
@@ -30,7 +30,7 @@ Validating cross-references in [encode/httpx](https://github.com/encode/httpx):
 
 | Command | Mean | Min | Max |
 |:---|---:|---:|---:|
-| `doxr .` | 19 ms | 16 ms | 50 ms |
+| `drefs .` | 19 ms | 16 ms | 50 ms |
 | `mkdocs build --strict` | 872 ms | 845 ms | 921 ms |
 
 **~45x faster.**
@@ -38,12 +38,12 @@ Validating cross-references in [encode/httpx](https://github.com/encode/httpx):
 ## Methodology
 
 ```bash
-# doxr (release build)
+# drefs (release build)
 cargo build --release
-hyperfine --warmup 3 --ignore-failure './target/release/doxr .'
+hyperfine --warmup 3 --ignore-failure './target/release/drefs .'
 
 # mkdocs build --strict
 hyperfine --warmup 3 '.venv/bin/mkdocs build --strict'
 ```
 
-doxr and `mkdocs build --strict` are not doing identical work. doxr validates cross-references against source code symbols. `mkdocs build --strict` renders an entire documentation site, which happens to catch some broken references along the way. The comparison shows how fast you can get cross-reference validation without waiting for a full docs build.
+drefs and `mkdocs build --strict` are not doing identical work. drefs validates cross-references against source code symbols. `mkdocs build --strict` renders an entire documentation site, which happens to catch some broken references along the way. The comparison shows how fast you can get cross-reference validation without waiting for a full docs build.

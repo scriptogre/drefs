@@ -22,7 +22,11 @@ pub enum SymbolKind {
 }
 
 /// Source location of a symbol definition.
+///
+/// Fields are populated during parsing and will be read by future features
+/// (e.g. `--fix`, go-to-definition).
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SourceLocation {
     pub file: String,
     pub line: usize, // 1-indexed
@@ -38,7 +42,8 @@ pub struct Symbol {
     pub members: HashMap<String, Symbol>,
     /// Base class names (for classes only), as written in the source.
     pub bases: Vec<String>,
-    /// Where this symbol is defined.
+    /// Where this symbol is defined (used by future --fix / go-to-definition).
+    #[allow(dead_code)]
     pub location: Option<SourceLocation>,
 }
 
@@ -348,6 +353,99 @@ impl SymbolGraph {
         }
     }
 
+    /// Find the closest matching symbol for a "did you mean?" suggestion.
+    ///
+    /// Returns `None` if no match is close enough (edit distance > max_distance).
+    pub fn suggest(&self, reference: &str, max_distance: usize) -> Option<String> {
+        let segments: Vec<&str> = reference.split('.').collect();
+
+        // Strategy 1: If there's a valid module prefix, suggest similar symbols
+        // within that module. This catches typos in the last segment, e.g.
+        // `pkg.models.Usr` → `pkg.models.User`.
+        for split in (1..segments.len()).rev() {
+            let module_path = segments[..split].join(".");
+            if let Some(module) = self.modules.get(&module_path) {
+                let remaining = segments[split..].join(".");
+                if let Some(closest) =
+                    closest_in_definitions(&module.definitions, &remaining, max_distance)
+                {
+                    return Some(format!("{module_path}.{closest}"));
+                }
+            }
+        }
+
+        // Strategy 2: Typo in a module segment. Try each prefix length and
+        // look for similar module names, e.g. `pkg.mdoels` → `pkg.models`.
+        for split in (1..segments.len()).rev() {
+            let parent = segments[..split - 1].join(".");
+            let typo_segment = segments[split - 1];
+            let prefix = if parent.is_empty() {
+                String::new()
+            } else {
+                format!("{parent}.")
+            };
+
+            let mut best: Option<(usize, String)> = None;
+            for module_path in self.modules.keys() {
+                if let Some(suffix) = module_path.strip_prefix(&prefix) {
+                    let first_segment = suffix.split('.').next().unwrap_or("");
+                    let dist = crate::util::edit_distance(typo_segment, first_segment);
+                    if dist > 0
+                        && dist <= max_distance
+                        && best.as_ref().is_none_or(|(d, _)| dist < *d)
+                    {
+                        // Reconstruct the corrected reference.
+                        let mut fixed = prefix.clone();
+                        fixed.push_str(first_segment);
+                        for seg in &segments[split..] {
+                            fixed.push('.');
+                            fixed.push_str(seg);
+                        }
+                        best = Some((dist, fixed));
+                    }
+                }
+            }
+
+            if let Some((_, suggestion)) = best {
+                // Only suggest if the corrected reference actually resolves.
+                if self.resolve(&suggestion) {
+                    return Some(suggestion);
+                }
+            }
+        }
+
+        None
+    }
+
+    /// Find similar short names from a module's imports and definitions.
+    pub fn suggest_short_name(
+        &self,
+        name: &str,
+        module: &Module,
+        max_distance: usize,
+    ) -> Option<String> {
+        let mut best: Option<(usize, String)> = None;
+
+        // Check imports.
+        for imp in &module.imports {
+            let local_name = imp.alias.as_deref().unwrap_or(&imp.name);
+            let dist = crate::util::edit_distance(name, local_name);
+            if dist > 0 && dist <= max_distance && best.as_ref().is_none_or(|(d, _)| dist < *d) {
+                best = Some((dist, local_name.to_string()));
+            }
+        }
+
+        // Check local definitions.
+        for def_name in module.definitions.keys() {
+            let dist = crate::util::edit_distance(name, def_name);
+            if dist > 0 && dist <= max_distance && best.as_ref().is_none_or(|(d, _)| dist < *d) {
+                best = Some((dist, def_name.to_string()));
+            }
+        }
+
+        best.map(|(_, s)| s)
+    }
+
     /// Resolve a class name to its fully-qualified path using the module's imports.
     fn resolve_class_name(&self, name: &str, module: &Module) -> Option<String> {
         // If it contains dots, it might already be qualified.
@@ -393,4 +491,42 @@ fn resolve_in_definitions(defs: &HashMap<String, Symbol>, segments: &[&str]) -> 
         return resolve_in_definitions(&sym.members, &segments[1..]);
     }
     false
+}
+
+/// Find the closest matching name in definitions for a (possibly dotted) path.
+fn closest_in_definitions(
+    defs: &HashMap<String, Symbol>,
+    target: &str,
+    max_distance: usize,
+) -> Option<String> {
+    let segments: Vec<&str> = target.split('.').collect();
+    let first = segments[0];
+
+    // If the first segment resolves exactly and there are more segments,
+    // recurse into that symbol's members.
+    if segments.len() > 1
+        && let Some(sym) = defs.get(first)
+    {
+        let rest = segments[1..].join(".");
+        if let Some(inner) = closest_in_definitions(&sym.members, &rest, max_distance) {
+            return Some(format!("{first}.{inner}"));
+        }
+    }
+
+    // Try fuzzy matching the first segment against all definition names.
+    let mut best: Option<(usize, String)> = None;
+    for name in defs.keys() {
+        let dist = crate::util::edit_distance(first, name);
+        if dist > 0 && dist <= max_distance && best.as_ref().is_none_or(|(d, _)| dist < *d) {
+            let mut candidate = name.clone();
+            // If there are remaining segments, append them.
+            for seg in &segments[1..] {
+                candidate.push('.');
+                candidate.push_str(seg);
+            }
+            best = Some((dist, candidate));
+        }
+    }
+
+    best.map(|(_, s)| s)
 }

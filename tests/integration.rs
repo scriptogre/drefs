@@ -1,10 +1,10 @@
 use std::process::Command;
 
-fn run_doxr(fixture: &str) -> (String, String, i32) {
-    let output = Command::new(env!("CARGO_BIN_EXE_doxr"))
+fn run_drefs(fixture: &str) -> (String, String, i32) {
+    let output = Command::new(env!("CARGO_BIN_EXE_drefs"))
         .arg(format!("tests/fixtures/{fixture}"))
         .output()
-        .expect("Failed to run doxr");
+        .expect("Failed to run drefs");
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
     let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -15,7 +15,7 @@ fn run_doxr(fixture: &str) -> (String, String, i32) {
 fn extract_unresolved(stdout: &str) -> Vec<String> {
     stdout
         .lines()
-        .filter(|l| l.contains("DXR001"))
+        .filter(|l| l.contains("DREF001"))
         .filter_map(|l| {
             let start = l.find('`')? + 1;
             let end = l[start..].find('`')? + start;
@@ -30,7 +30,7 @@ fn extract_unresolved(stdout: &str) -> Vec<String> {
 
 #[test]
 fn edge_cases_catches_all_broken_refs() {
-    let (stdout, _stderr, code) = run_doxr("edge_cases");
+    let (stdout, _stderr, code) = run_drefs("edge_cases");
     let errors = extract_unresolved(&stdout);
 
     // These should all be flagged.
@@ -58,7 +58,7 @@ fn edge_cases_catches_all_broken_refs() {
 
 #[test]
 fn edge_cases_no_false_positives() {
-    let (stdout, _stderr, _code) = run_doxr("edge_cases");
+    let (stdout, _stderr, _code) = run_drefs("edge_cases");
     let errors = extract_unresolved(&stdout);
 
     // These should all resolve successfully (NOT appear in errors).
@@ -102,7 +102,7 @@ fn edge_cases_no_false_positives() {
 
 #[test]
 fn edge_cases_error_count() {
-    let (stdout, _stderr, _code) = run_doxr("edge_cases");
+    let (stdout, _stderr, _code) = run_drefs("edge_cases");
     let errors = extract_unresolved(&stdout);
     // 10 total: 4 from models.py, 3 from sphinx_style.py, 2 from deep.py, 1 from helpers.py
     // (nonexistent_method appears twice: once in models.py mkdocs, once in sphinx_style.py sphinx)
@@ -120,7 +120,7 @@ fn edge_cases_error_count() {
 
 #[test]
 fn decorated_classes_catches_broken_refs() {
-    let (stdout, _stderr, code) = run_doxr("decorated_classes");
+    let (stdout, _stderr, code) = run_drefs("decorated_classes");
     let errors = extract_unresolved(&stdout);
 
     let expected = vec![
@@ -144,7 +144,7 @@ fn decorated_classes_catches_broken_refs() {
 
 #[test]
 fn native_syntax_no_false_positives() {
-    let (stdout, _stderr, _code) = run_doxr("native_syntax");
+    let (stdout, _stderr, _code) = run_drefs("native_syntax");
     let errors = extract_unresolved(&stdout);
 
     let must_resolve = vec![
@@ -172,7 +172,7 @@ fn native_syntax_no_false_positives() {
 
 #[test]
 fn native_syntax_catches_broken_refs() {
-    let (stdout, _stderr, code) = run_doxr("native_syntax");
+    let (stdout, _stderr, code) = run_drefs("native_syntax");
     let errors = extract_unresolved(&stdout);
 
     let expected_errors = vec!["Nonexistent", "pkg.models.Fake", "AlsoFake"];
@@ -189,7 +189,7 @@ fn native_syntax_catches_broken_refs() {
 
 #[test]
 fn native_syntax_error_count() {
-    let (stdout, _stderr, _code) = run_doxr("native_syntax");
+    let (stdout, _stderr, _code) = run_drefs("native_syntax");
     let errors = extract_unresolved(&stdout);
     assert_eq!(
         errors.len(),
@@ -205,7 +205,7 @@ fn native_syntax_error_count() {
 
 #[test]
 fn wildcard_imports_direct_paths_work() {
-    let (stdout, _stderr, _code) = run_doxr("wildcard_imports");
+    let (stdout, _stderr, _code) = run_drefs("wildcard_imports");
     let errors = extract_unresolved(&stdout);
 
     // Direct paths should always work regardless of wildcard support.
@@ -225,7 +225,7 @@ fn wildcard_imports_direct_paths_work() {
 
 #[test]
 fn wildcard_imports_through_init() {
-    let (stdout, _stderr, _code) = run_doxr("wildcard_imports");
+    let (stdout, _stderr, _code) = run_drefs("wildcard_imports");
     let errors = extract_unresolved(&stdout);
 
     // These go through __init__.py's `from pkg.models import *`
@@ -251,7 +251,7 @@ fn wildcard_imports_through_init() {
 
 #[test]
 fn multiline_imports_through_init() {
-    let (stdout, _stderr, _code) = run_doxr("multiline_imports");
+    let (stdout, _stderr, _code) = run_drefs("multiline_imports");
     let errors = extract_unresolved(&stdout);
 
     // __init__.py has no docstrings, so it goes through fast_scan.
@@ -268,7 +268,7 @@ fn multiline_imports_through_init() {
 
 #[test]
 fn multiline_imports_direct_paths_work() {
-    let (stdout, _stderr, _code) = run_doxr("multiline_imports");
+    let (stdout, _stderr, _code) = run_drefs("multiline_imports");
     let errors = extract_unresolved(&stdout);
 
     // Direct paths should always work.
@@ -288,7 +288,7 @@ fn multiline_imports_direct_paths_work() {
 
 #[test]
 fn decorated_classes_no_false_positives() {
-    let (stdout, _stderr, _code) = run_doxr("decorated_classes");
+    let (stdout, _stderr, _code) = run_drefs("decorated_classes");
     let errors = extract_unresolved(&stdout);
 
     let must_resolve = vec![

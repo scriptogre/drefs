@@ -9,7 +9,7 @@
 - [x] Ruff-compatible output format
 - [x] PyCharm plugin with Ctrl+Click, highlighting, and squiggles
 - [x] Benchmarks
-- [ ] Publish to PyPI (`uvx doxr .` works)
+- [ ] Publish to PyPI (`uvx drefs .` works)
 - [ ] GitHub Action for CI integration
 
 ## Future

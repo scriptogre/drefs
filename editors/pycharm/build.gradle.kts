@@ -4,7 +4,7 @@ plugins {
     id("org.jetbrains.intellij.platform") version "2.14.0"
 }
 
-group = "com.doxr.intellij"
+group = "com.drefs.intellij"
 version = "0.2.0"
 
 repositories {

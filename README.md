@@ -1,8 +1,8 @@
-# doxr
+# drefs
 
 [![CI](https://github.com/scriptogre/doxr/actions/workflows/ci.yml/badge.svg)](https://github.com/scriptogre/doxr/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/doxr.svg)](https://pypi.org/project/doxr/)
-[![Python versions](https://img.shields.io/pypi/pyversions/doxr.svg)](https://pypi.org/project/doxr/)
+[![PyPI](https://img.shields.io/pypi/v/drefs.svg)](https://pypi.org/project/drefs/)
+[![Python versions](https://img.shields.io/pypi/pyversions/drefs.svg)](https://pypi.org/project/drefs/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 An extremely fast Python docstring cross-reference checker, written in Rust.
@@ -22,12 +22,12 @@ An extremely fast Python docstring cross-reference checker, written in Rust.
 ## Usage
 
 ```bash
-uvx doxr .
+uvx drefs .
 ```
 
 ```
-src/my_pkg/models.py:12:5: DXR001 Unresolved reference `my_pkg.old_module.Foo`
-src/my_pkg/views.py:45:9: DXR001 Unresolved reference `Nonexistent`
+src/my_pkg/models.py:12:5: DREF001 Unresolved reference `my_pkg.old_module.Foo`
+src/my_pkg/views.py:45:9: DREF001 Unresolved reference `Nonexistent`
 Found 2 errors.
 ```
 
@@ -41,14 +41,14 @@ That's it.
 
 `[User]` resolves via the current file's imports. `[pkg.models.User]` resolves directly. Escape with `\[not a ref\]`.
 
-doxr understands `__init__.py` re-exports, inheritance chains, and `self.x` attributes.
+drefs understands `__init__.py` re-exports, inheritance chains, and `self.x` attributes.
 
 ## Configuration
 
 Optional. Add to `pyproject.toml`:
 
 ```toml
-[tool.doxr]
+[tool.drefs]
 src = ["src"]                  # auto-detected if omitted
 style = "auto"                 # "mkdocs" | "sphinx" | "auto"
 inventories = [                # validate against external symbols
@@ -64,7 +64,7 @@ inventories = [                # validate against external symbols
 - Syntax highlighting on cross-references
 - Red squiggles on broken references
 
-Install from `editors/pycharm/build/distributions/doxr-pycharm-*.zip` via Settings > Plugins > Install from Disk.
+Install from `editors/pycharm/build/distributions/drefs-pycharm-*.zip` via Settings > Plugins > Install from Disk.
 
 ## Contributing
 

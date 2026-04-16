@@ -1,7 +1,7 @@
 <idea-plugin>
-    <id>com.doxr.intellij</id>
-    <name>doxr</name>
-    <vendor url="https://github.com/scriptogre/doxr">doxr</vendor>
+    <id>com.drefs.intellij</id>
+    <name>drefs</name>
+    <vendor url="https://github.com/scriptogre/doxr">drefs</vendor>
 
     <description><![CDATA[
         Docstring cross-reference navigation for Python. Makes
@@ -15,9 +15,9 @@
     <extensions defaultExtensionNs="com.intellij">
         <psi.referenceContributor
                 language="Python"
-                implementation="com.doxr.intellij.DoxrReferenceContributor"/>
+                implementation="com.drefs.intellij.DrefsReferenceContributor"/>
         <annotator
                 language="Python"
-                implementationClass="com.doxr.intellij.DoxrAnnotator"/>
+                implementationClass="com.drefs.intellij.DrefsAnnotator"/>
     </extensions>
 </idea-plugin>

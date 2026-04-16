@@ -1,4 +1,4 @@
-package com.doxr.intellij
+package com.drefs.intellij
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -19,7 +19,7 @@ import com.jetbrains.python.psi.resolve.PyQualifiedNameResolveContext
  * Uses PyCharm's own resolution — the same code path as import statements.
  * Pattern taken from JetBrains' PyDocumentationLink.kt.
  */
-class DoxrPythonReference(
+class DrefsPythonReference(
     element: PyStringLiteralExpression,
     range: TextRange,
     private val qualifiedName: String,

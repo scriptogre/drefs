@@ -1,4 +1,4 @@
-package com.doxr.intellij
+package com.drefs.intellij
 
 import com.intellij.openapi.util.TextRange
 import com.intellij.psi.PsiElement
@@ -12,7 +12,7 @@ import java.util.regex.Pattern
  * Finds MkDocs, Sphinx, and Rust-style cross-reference patterns in docstrings
  * and creates per-segment Python references for the dotted paths.
  */
-class DoxrReferenceProvider : PsiReferenceProvider() {
+class DrefsReferenceProvider : PsiReferenceProvider() {
 
     override fun getReferencesByElement(
         element: PsiElement,
@@ -32,15 +32,15 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
         val contentOffset = stringLiteral.stringValueTextRanges.firstOrNull()?.startOffset ?: return PsiReference.EMPTY_ARRAY
 
         // Extract MkDocs refs.
-        findRefs(DoxrPatterns.MKDOCS_EXPLICIT, content, 1, contentOffset, stringLiteral, references)
-        findRefs(DoxrPatterns.MKDOCS_AUTOREF, content, 1, contentOffset, stringLiteral, references)
+        findRefs(DrefsPatterns.MKDOCS_EXPLICIT, content, 1, contentOffset, stringLiteral, references)
+        findRefs(DrefsPatterns.MKDOCS_AUTOREF, content, 1, contentOffset, stringLiteral, references)
 
         // Extract Sphinx refs (group 2 = the dotted path).
-        findRefs(DoxrPatterns.SPHINX_XREF, content, 2, contentOffset, stringLiteral, references)
+        findRefs(DrefsPatterns.SPHINX_XREF, content, 2, contentOffset, stringLiteral, references)
 
         // Collect offsets from MkDocs/Sphinx refs to avoid double-extracting.
         val existingOffsets = references.mapNotNull { ref ->
-            (ref as? DoxrPythonReference)?.rangeInElement?.startOffset
+            (ref as? DrefsPythonReference)?.rangeInElement?.startOffset
         }.toSet()
 
         // Extract Rust-style refs.
@@ -62,7 +62,7 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
             var path = matcher.group(group) ?: continue
             // Strip Sphinx tilde prefix.
             if (path.startsWith("~")) path = path.substring(1)
-            if (!DoxrPatterns.isFullyQualified(path)) continue
+            if (!DrefsPatterns.isFullyQualified(path)) continue
 
             val pathStart = matcher.start(group) + (if (matcher.group(group).startsWith("~")) 1 else 0)
             createSegmentReferences(path, contentOffset + pathStart, element, out)
@@ -76,12 +76,12 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
         existingOffsets: Set<Int>,
         out: MutableList<PsiReference>,
     ) {
-        val matcher = DoxrPatterns.RUST_STYLE.matcher(content)
+        val matcher = DrefsPatterns.RUST_STYLE.matcher(content)
         while (matcher.find()) {
             val start = matcher.start()
             val end = matcher.end()
 
-            if (DoxrPatterns.shouldSkipRustStyle(content, start, end)) continue
+            if (DrefsPatterns.shouldSkipRustStyle(content, start, end)) continue
 
             val path = matcher.group(1) ?: continue
             val pathStart = matcher.start(1)
@@ -91,12 +91,12 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
 
             if (path.contains('.')) {
                 // Fully qualified — same per-segment references as MkDocs/Sphinx.
-                if (!DoxrPatterns.isFullyQualified(path)) continue
+                if (!DrefsPatterns.isFullyQualified(path)) continue
                 createSegmentReferences(path, contentOffset + pathStart, element, out)
             } else {
                 // Short name — single reference, resolved via file scope.
                 val range = TextRange(contentOffset + pathStart, contentOffset + pathStart + path.length)
-                out.add(DoxrPythonReference(element, range, path, resolveShort = true))
+                out.add(DrefsPythonReference(element, range, path, resolveShort = true))
             }
         }
     }
@@ -124,7 +124,7 @@ class DoxrReferenceProvider : PsiReferenceProvider() {
             val qualifiedName = segments.subList(0, i + 1).joinToString(".")
             val range = TextRange(pos, pos + segment.length)
 
-            out.add(DoxrPythonReference(element, range, qualifiedName))
+            out.add(DrefsPythonReference(element, range, qualifiedName))
             pos += segment.length + 1 // +1 for the dot
         }
     }

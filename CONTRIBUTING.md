@@ -1,4 +1,4 @@
-# Contributing to doxr
+# Contributing to drefs
 
 ## Prerequisites
 
@@ -10,7 +10,7 @@
 
 ```bash
 git clone https://github.com/scriptogre/doxr.git
-cd doxr
+cd drefs
 cargo build
 ```
 
@@ -21,7 +21,7 @@ cargo build
 cargo test
 
 # Unit tests only
-cargo test --bin doxr
+cargo test --bin drefs
 
 # Integration tests only
 cargo test --test integration
@@ -64,10 +64,10 @@ cd editors/pycharm
 ./gradlew buildPlugin
 ```
 
-The built plugin zip will be at `build/distributions/doxr-pycharm-*.zip`.
+The built plugin zip will be at `build/distributions/drefs-pycharm-*.zip`.
 
 ## Test Fixtures
 
-Test fixtures are minimal Python projects in `tests/fixtures/`. Each has a `pyproject.toml` and a `src/pkg/` directory. Integration tests run `doxr` against these fixtures and assert on the output.
+Test fixtures are minimal Python projects in `tests/fixtures/`. Each has a `pyproject.toml` and a `src/pkg/` directory. Integration tests run `drefs` against these fixtures and assert on the output.
 
 To add a new test case, create a fixture directory and add tests in `tests/integration.rs`.

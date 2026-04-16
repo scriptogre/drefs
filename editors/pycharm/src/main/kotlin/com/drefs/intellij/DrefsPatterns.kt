@@ -1,4 +1,4 @@
-package com.doxr.intellij
+package com.drefs.intellij
 
 import java.util.regex.Pattern
 
@@ -9,7 +9,7 @@ import java.util.regex.Pattern
  * These patterns MUST stay in sync with the Rust equivalents.
  * CI verifies this — see scripts/check_pattern_sync.sh
  */
-object DoxrPatterns {
+object DrefsPatterns {
 
     // -----------------------------------------------------------------------
     // MkDocs patterns

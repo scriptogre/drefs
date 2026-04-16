@@ -1,9 +1,12 @@
-/// Diagnostics: validate references and emit Ruff-format output.
-use crate::config::DoxrConfig;
+/// Diagnostics: validate docstring references and emit Ruff-format output.
+use crate::config::DrefsConfig;
 use crate::extract::{Reference, ReferenceKind, extract_references};
 use crate::graph::SymbolGraph;
 use crate::inventory::Inventory;
 use std::path::Path;
+
+/// Maximum edit distance for "did you mean?" suggestions.
+const MAX_SUGGEST_DISTANCE: usize = 2;
 
 /// A single diagnostic (error) to report.
 #[derive(Debug)]
@@ -28,7 +31,7 @@ impl std::fmt::Display for Diagnostic {
 /// Check all docstrings in the symbol graph and return diagnostics.
 pub fn check(
     graph: &SymbolGraph,
-    config: &DoxrConfig,
+    config: &DrefsConfig,
     inventory: &Inventory,
     file_map: &[(String, String)], // (dotted_path, file_path)
 ) -> Vec<Diagnostic> {
@@ -53,13 +56,28 @@ pub fn check(
                         match expand_short_name(&r.target, module) {
                             Some(fqn) => (fqn, true),
                             None => {
-                                // Short name not in scope — error.
+                                // Short name not in scope — suggest similar names.
+                                let suggestion = graph.suggest_short_name(
+                                    &r.target,
+                                    module,
+                                    MAX_SUGGEST_DISTANCE,
+                                );
+                                let message = match suggestion {
+                                    Some(s) => format!(
+                                        "Unresolved docstring reference `{}`. Did you mean `{s}`?",
+                                        r.target
+                                    ),
+                                    None => format!(
+                                        "Unresolved docstring reference `{}`. No import or definition found in this file",
+                                        r.target
+                                    ),
+                                };
                                 diagnostics.push(Diagnostic {
                                     file: file_path.clone(),
                                     line: docstring.line,
                                     col: docstring.col,
-                                    code: "DXR001",
-                                    message: format!("Unresolved reference `{}`", r.target),
+                                    code: "DREF001",
+                                    message,
                                 });
                                 continue;
                             }
@@ -68,35 +86,36 @@ pub fn check(
                     ReferenceKind::FullyQualified => (r.target.clone(), false),
                 };
 
+                let display_name = if is_short { &r.target } else { &target };
                 let internal = graph.is_internal(&target);
 
                 if internal {
                     // Internal ref: must resolve in our symbol graph.
                     if !graph.resolve(&target) {
+                        let suggestion = graph.suggest(&target, MAX_SUGGEST_DISTANCE);
+                        let message = match suggestion {
+                            Some(s) => format!(
+                                "Unresolved docstring reference `{display_name}`. Did you mean `{s}`?"
+                            ),
+                            None => format!("Unresolved docstring reference `{display_name}`"),
+                        };
                         diagnostics.push(Diagnostic {
                             file: file_path.clone(),
                             line: docstring.line,
                             col: docstring.col,
-                            code: "DXR001",
-                            message: format!(
-                                "Unresolved reference `{}`",
-                                if is_short { &r.target } else { &target }
-                            ),
+                            code: "DREF001",
+                            message,
                         });
                     }
                 } else if inventory.covers_root(&target) {
-                    // External ref whose root module is covered by an inventory:
-                    // check it. If the root isn't covered, silently skip.
+                    // External ref whose root module is covered by an inventory.
                     if !inventory.contains(&target) {
                         diagnostics.push(Diagnostic {
                             file: file_path.clone(),
                             line: docstring.line,
                             col: docstring.col,
-                            code: "DXR001",
-                            message: format!(
-                                "Unresolved reference `{}`",
-                                if is_short { &r.target } else { &target }
-                            ),
+                            code: "DREF001",
+                            message: format!("Unresolved docstring reference `{display_name}`"),
                         });
                     }
                 }
@@ -117,7 +136,7 @@ pub fn check(
 }
 
 /// Check if a reference should be skipped entirely (explicit config).
-fn is_explicitly_skipped(reference: &Reference, config: &DoxrConfig) -> bool {
+fn is_explicitly_skipped(reference: &Reference, config: &DrefsConfig) -> bool {
     let root = reference.target.split('.').next().unwrap_or("");
     config.known_modules.iter().any(|km| {
         let km_root = km.split('.').next().unwrap_or("");
