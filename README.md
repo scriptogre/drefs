@@ -62,7 +62,7 @@ inventories = [                # validate against external symbols
 - Syntax highlighting on cross-references
 - Red squiggles on broken references
 
-Install from `editors/pycharm/build/distributions/drefs-pycharm-*.zip` via Settings > Plugins > Install from Disk.
+Install from `editors/jetbrains/build/distributions/drefs-pycharm-*.zip` via Settings > Plugins > Install from Disk.
 
 ## Contributing
 

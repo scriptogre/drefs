@@ -11,19 +11,29 @@ mod util;
 
 use anyhow::Result;
 use clap::Parser as ClapParser;
+use clap::builder::styling::{AnsiColor, Effects, Styles};
 use rayon::prelude::*;
 use std::path::PathBuf;
 use std::process;
 
+const STYLES: Styles = Styles::styled()
+    .header(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .usage(AnsiColor::Green.on_default().effects(Effects::BOLD))
+    .literal(AnsiColor::Cyan.on_default().effects(Effects::BOLD))
+    .placeholder(AnsiColor::Cyan.on_default());
+
 #[derive(ClapParser)]
 #[command(
     name = "drefs",
+    author,
     version,
-    about = "An extremely fast Python docstring cross-reference checker, written in Rust."
+    about = "drefs: An extremely fast Python docstring cross-reference checker, written in Rust.",
+    after_help = "Examples:\n  drefs .                Check the current directory\n  drefs src/             Check a specific directory\n  drefs . --style mkdocs Only check MkDocs syntax",
+    arg_required_else_help = true,
+    styles = STYLES,
 )]
 struct Cli {
-    /// Project root directory to check (default: current directory).
-    #[arg(default_value = ".")]
+    /// Project root directory to check.
     path: PathBuf,
 
     /// Override source directories (can be specified multiple times).

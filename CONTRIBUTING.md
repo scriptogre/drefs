@@ -60,7 +60,7 @@ editors/
 ## PyCharm Plugin
 
 ```bash
-cd editors/pycharm
+cd editors/jetbrains
 ./gradlew buildPlugin
 ```
 

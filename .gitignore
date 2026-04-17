@@ -1,8 +1,8 @@
 /target
 __pycache__/
 *.pyc
-editors/pycharm/build/
-editors/pycharm/.gradle/
-editors/pycharm/.intellijPlatform/
-editors/pycharm/.kotlin/
+editors/jetbrains/build/
+editors/jetbrains/.gradle/
+editors/jetbrains/.intellijPlatform/
+editors/jetbrains/.kotlin/
 docs/superpowers/

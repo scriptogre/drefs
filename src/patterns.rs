@@ -1,6 +1,6 @@
 /// Shared cross-reference patterns for docstring syntax detection.
 ///
-/// SYNC: editors/pycharm/src/main/kotlin/com/drefs/intellij/DrefsPatterns.kt
+/// SYNC: editors/jetbrains/src/main/kotlin/com/drefs/intellij/DrefsPatterns.kt
 /// These patterns MUST stay in sync with the Kotlin equivalents.
 /// CI verifies this — see scripts/check_pattern_sync.sh
 use regex::Regex;

@@ -7,7 +7,7 @@
 set -euo pipefail
 
 RUST_FILE="src/patterns.rs"
-KOTLIN_FILE="editors/pycharm/src/main/kotlin/com/drefs/intellij/DrefsPatterns.kt"
+KOTLIN_FILE="editors/jetbrains/src/main/kotlin/com/drefs/intellij/DrefsPatterns.kt"
 
 errors=0
 
